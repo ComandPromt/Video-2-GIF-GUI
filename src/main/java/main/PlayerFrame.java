@@ -17,6 +17,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
@@ -30,9 +33,11 @@ import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JSeparator;
 import javax.swing.JSlider;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
@@ -47,6 +52,8 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 import org.freedesktop.gstreamer.Gst;
 import org.freedesktop.gstreamer.elements.PlayBin;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import com.drew.imaging.ImageMetadataReader;
 import com.drew.imaging.ImageProcessingException;
@@ -61,15 +68,31 @@ public class PlayerFrame extends JFrame {
 
 	private static final long serialVersionUID = 1L;
 
+	private String carpeta;
+
+	static String directorioActual;
+
+	static String os = System.getProperty("os.name");
+
+	static String separador;
+
 	private JTextField size = new JTextField();
 
 	private static JSlider positionSlider = new JSlider();
 
-	private JComboBox posicionWatermark = new JComboBox();
+	private JComboBox<String> posicionWatermark = new JComboBox<String>();
 
-	private JComboBox colorWatermark = new JComboBox();
+	private JComboBox<String> colorWatermark = new JComboBox<String>();
+
+	JCheckBox watermark;
+
+	JComboBox<String> calidad;
+
+	JCheckBox guardarMismaCarpeta;
 
 	private JPanel contentPane;
+
+	private JCheckBox blur;
 
 	private boolean reproducir = false;
 
@@ -111,18 +134,36 @@ public class PlayerFrame extends JFrame {
 
 	private JTextField textoWatermark;
 	private JTextField fin;
-	private JTextField blur_1;
-	private JTextField blur_2;
+	private JTextField brillo_1;
+	private JTextField color_1;
+	private JTextField brillo_2;
+	private JTextField color_2;
+
+	public static String saberSeparador(String os) {
+		if (os.equals("Linux")) {
+			return "/";
+		} else {
+			return "\\";
+		}
+	}
+
+	private String saberCarpetaGif(int filtro) {
+
+		carpeta = directorioActual + "output" + separador;
+
+		if (filtro == 2 || (filtro == 3 && guardarMismaCarpeta.isSelected())) {
+			carpeta = video.substring(0, video.lastIndexOf(separador) + 1);
+		}
+
+		return carpeta;
+
+	}
 
 	private void ponerDuracionGif() {
 
-		DecimalFormat df = new DecimalFormat("#.000");
+		DecimalFormat df = new DecimalFormat("0.000");
 
 		String resultado = "" + df.format(segundosFin - segundosInicio);
-
-		if (resultado.indexOf(".") == 0) {
-			resultado = "0" + resultado;
-		}
 
 		if (resultado.contains("-")) {
 			resultado = "";
@@ -306,6 +347,71 @@ public class PlayerFrame extends JFrame {
 
 	}
 
+	private static String readAll(Reader rd) throws IOException {
+
+		StringBuilder sb = new StringBuilder();
+
+		int cp;
+
+		while ((cp = rd.read()) != -1) {
+			sb.append((char) cp);
+		}
+
+		return sb.toString();
+	}
+
+	public static JSONObject readJsonFromUrl(String url) throws IOException {
+
+		InputStream is = new URL(url).openStream();
+
+		BufferedReader rd = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+
+		String jsonText = readAll(rd);
+		is.close();
+
+		return new JSONObject(jsonText);
+
+	}
+
+	public static JSONObject apiImagenes(String parametros) throws IOException {
+
+		JSONObject json = readJsonFromUrl("https://apiperiquito.herokuapp.com/recibo-json.php?imagenes=" + parametros);
+
+		return json;
+	}
+
+	public static String extraerNombreArchivo(String extension) throws IOException {
+
+		JSONObject json = apiImagenes("archivo." + extension);
+
+		JSONArray imagenesBD = json.getJSONArray("imagenes_bd");
+
+		return imagenesBD.get(0).toString();
+	}
+
+	public static void abrirCarpeta(String ruta) throws IOException {
+
+		if (ruta != null && !ruta.equals("") && !ruta.isEmpty()) {
+
+			try {
+
+				if (os.contentEquals("Linux")) {
+					Runtime.getRuntime().exec("xdg-open " + ruta);
+				}
+
+				else {
+					Runtime.getRuntime().exec("cmd /c explorer " + "\"" + ruta + "\"");
+				}
+
+			}
+
+			catch (IOException e) {
+
+			}
+		}
+
+	}
+
 	public static String calcularTiempo(long segundos) {
 
 		int minutos = 0;
@@ -439,7 +545,7 @@ public class PlayerFrame extends JFrame {
 			}
 
 			catch (Exception e) {
-				e.printStackTrace();
+
 			}
 
 		}
@@ -550,13 +656,21 @@ public class PlayerFrame extends JFrame {
 
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 
 		positionSlider = new JSlider(0, 1000);
 
 		positionSlider.setBorder(null);
 
 		Gst.init();
+
+		separador = saberSeparador(os);
+
+		directorioActual = new File(".").getCanonicalPath() + separador;
+
+		File directorio = new File(directorioActual + "output");
+
+		directorio.mkdir();
 
 		try {
 
@@ -586,7 +700,7 @@ public class PlayerFrame extends JFrame {
 		}
 
 		catch (Exception e) {
-			e.printStackTrace();
+
 		}
 
 	}
@@ -617,7 +731,62 @@ public class PlayerFrame extends JFrame {
 
 		setJMenuBar(menuBar);
 
-		JMenuItem mntmNewMenuItem = new JMenuItem("Abrir Video (CTRL+O)\n");
+		JMenu mnNewMenu = new JMenu("Abrir");
+		mnNewMenu.setFont(new Font("Dialog", Font.PLAIN, 16));
+		mnNewMenu.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/abrir.png")));
+		menuBar.add(mnNewMenu);
+
+		JMenuItem mntmNewMenuItem = new JMenuItem("Video (CTRL+O)");
+		mntmNewMenuItem.setFont(new Font("Dialog", Font.PLAIN, 16));
+		mntmNewMenuItem.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/video_2_frame.png")));
+		mnNewMenu.add(mntmNewMenuItem);
+
+		JSeparator separator = new JSeparator();
+		mnNewMenu.add(separator);
+
+		JMenuItem mntmNewMenuItem_1 = new JMenuItem("Carpeta de salida (programa)");
+		mntmNewMenuItem_1.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				try {
+					abrirCarpeta(saberCarpetaGif(1));
+				} catch (Exception e1) {
+
+				}
+			}
+		});
+		mntmNewMenuItem_1.setFont(new Font("Dialog", Font.PLAIN, 16));
+		mntmNewMenuItem_1.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/folder.png")));
+		mnNewMenu.add(mntmNewMenuItem_1);
+
+		JSeparator separator_1 = new JSeparator();
+		mnNewMenu.add(separator_1);
+
+		JMenuItem mntmNewMenuItem_2 = new JMenuItem("Carpeta del vídeo");
+		mntmNewMenuItem_2.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+
+				if (!duracion.getText().isEmpty()) {
+
+					try {
+
+						abrirCarpeta(saberCarpetaGif(2));
+					}
+
+					catch (Exception e1) {
+
+					}
+
+				}
+
+			}
+
+		});
+
+		mntmNewMenuItem_2.setFont(new Font("Dialog", Font.PLAIN, 16));
+		mntmNewMenuItem_2.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/folder.png")));
+		mnNewMenu.add(mntmNewMenuItem_2);
 
 		mntmNewMenuItem.addMouseListener(new MouseAdapter() {
 
@@ -625,26 +794,16 @@ public class PlayerFrame extends JFrame {
 			public void mousePressed(MouseEvent e) {
 				try {
 					abrirVideo();
-				} catch (ImageProcessingException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				} catch (IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
+				} catch (Exception e1) {
 				}
 			}
 
 		});
 
-		menuBar.add(mntmNewMenuItem);
-
-		JMenuItem mntmNewMenuItem_1 = new JMenuItem("Configuración");
-
-		menuBar.add(mntmNewMenuItem_1);
-
 		contentPane = new JPanel();
 
 		contentPane.addKeyListener(new KeyAdapter() {
+
 			@Override
 			public void keyPressed(KeyEvent e) {
 
@@ -663,13 +822,9 @@ public class PlayerFrame extends JFrame {
 		setContentPane(contentPane);
 
 		final SpringLayout sl_contentPane = new SpringLayout();
-		sl_contentPane.putConstraint(SpringLayout.EAST, colorWatermark, -419, SpringLayout.EAST, contentPane);
-		sl_contentPane.putConstraint(SpringLayout.WEST, size, 0, SpringLayout.WEST, positionSlider);
-		sl_contentPane.putConstraint(SpringLayout.SOUTH, size, -20, SpringLayout.NORTH, colorWatermark);
-		sl_contentPane.putConstraint(SpringLayout.EAST, size, 0, SpringLayout.EAST, colorWatermark);
-		sl_contentPane.putConstraint(SpringLayout.SOUTH, colorWatermark, -16, SpringLayout.NORTH, posicionWatermark);
 		sl_contentPane.putConstraint(SpringLayout.WEST, posicionWatermark, 37, SpringLayout.WEST, contentPane);
-		sl_contentPane.putConstraint(SpringLayout.EAST, posicionWatermark, 0, SpringLayout.EAST, colorWatermark);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, size, -14, SpringLayout.NORTH, colorWatermark);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, colorWatermark, -16, SpringLayout.NORTH, posicionWatermark);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, posicionWatermark, -24, SpringLayout.SOUTH, contentPane);
 
 		contentPane.setLayout(sl_contentPane);
@@ -690,12 +845,8 @@ public class PlayerFrame extends JFrame {
 
 				try {
 					abrirVideo();
-				} catch (ImageProcessingException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				} catch (IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
+				} catch (Exception e1) {
+
 				}
 
 			}
@@ -890,7 +1041,7 @@ public class PlayerFrame extends JFrame {
 		btnNewButton_1_1_1.setFont(new Font("Dialog", Font.BOLD, 16));
 		contentPane.add(btnNewButton_1_1_1);
 
-		JLabel lblDuracin = new JLabel("Duración");
+		JLabel lblDuracin = new JLabel("Duración GIF");
 		sl_contentPane.putConstraint(SpringLayout.WEST, lblDuracin, 10, SpringLayout.WEST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.EAST, lblDuracin, -5, SpringLayout.WEST, videoOutput);
 		lblDuracin.setHorizontalAlignment(SwingConstants.CENTER);
@@ -901,7 +1052,7 @@ public class PlayerFrame extends JFrame {
 
 		anchoVideoTxt = new JTextField();
 		sl_contentPane.putConstraint(SpringLayout.WEST, anchoVideoTxt, 37, SpringLayout.WEST, contentPane);
-		sl_contentPane.putConstraint(SpringLayout.EAST, anchoVideoTxt, -33, SpringLayout.WEST, videoOutput);
+		sl_contentPane.putConstraint(SpringLayout.EAST, anchoVideoTxt, -26, SpringLayout.WEST, videoOutput);
 		anchoVideoTxt.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyReleased(KeyEvent e) {
@@ -917,7 +1068,8 @@ public class PlayerFrame extends JFrame {
 		});
 
 		largoVideoTxt = new JTextField();
-		sl_contentPane.putConstraint(SpringLayout.EAST, largoVideoTxt, -33, SpringLayout.WEST, videoOutput);
+		sl_contentPane.putConstraint(SpringLayout.WEST, largoVideoTxt, 37, SpringLayout.WEST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.EAST, largoVideoTxt, -26, SpringLayout.WEST, videoOutput);
 		largoVideoTxt.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyReleased(KeyEvent e) {
@@ -932,9 +1084,9 @@ public class PlayerFrame extends JFrame {
 		});
 
 		duracionVideo = new JTextField();
-		sl_contentPane.putConstraint(SpringLayout.WEST, duracionVideo, -114, SpringLayout.EAST, anchoVideoTxt);
+		sl_contentPane.putConstraint(SpringLayout.WEST, duracionVideo, 37, SpringLayout.WEST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.EAST, duracionVideo, -26, SpringLayout.WEST, videoOutput);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, duracionVideo, 31, SpringLayout.SOUTH, lblDuracin);
-		sl_contentPane.putConstraint(SpringLayout.EAST, duracionVideo, 0, SpringLayout.EAST, anchoVideoTxt);
 
 		duracionVideo.setHorizontalAlignment(SwingConstants.CENTER);
 		duracionVideo.setEditable(false);
@@ -984,6 +1136,9 @@ public class PlayerFrame extends JFrame {
 		contentPane.add(lblDuracin_1_1_1);
 
 		rate = new JTextField();
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblDuracin_1_1_1, -6, SpringLayout.NORTH, rate);
+		sl_contentPane.putConstraint(SpringLayout.WEST, rate, 37, SpringLayout.WEST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.EAST, rate, 0, SpringLayout.EAST, duracionVideo);
 
 		rate.addKeyListener(new KeyAdapter() {
 
@@ -1008,47 +1163,28 @@ public class PlayerFrame extends JFrame {
 		});
 
 		rate.setText("10");
-
-		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblDuracin_1_1_1, -6, SpringLayout.NORTH, rate);
-		sl_contentPane.putConstraint(SpringLayout.WEST, rate, 0, SpringLayout.WEST, duracionVideo);
 		rate.setHorizontalAlignment(SwingConstants.CENTER);
 		rate.setColumns(10);
 		contentPane.add(rate);
 
 		JLabel lblDuracin_1_1_1_1 = new JLabel("Calidad");
 		sl_contentPane.putConstraint(SpringLayout.NORTH, lblDuracin_1_1_1_1, 342, SpringLayout.NORTH, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.WEST, lblDuracin_1_1_1_1, 37, SpringLayout.WEST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.EAST, lblDuracin_1_1_1_1, -33, SpringLayout.WEST, videoOutput);
 		sl_contentPane.putConstraint(SpringLayout.NORTH, rate, -46, SpringLayout.NORTH, lblDuracin_1_1_1_1);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, rate, -18, SpringLayout.NORTH, lblDuracin_1_1_1_1);
-		sl_contentPane.putConstraint(SpringLayout.WEST, lblDuracin_1_1_1_1, 37, SpringLayout.WEST, contentPane);
-		sl_contentPane.putConstraint(SpringLayout.EAST, lblDuracin_1_1_1_1, 0, SpringLayout.EAST, duracionVideo);
 		lblDuracin_1_1_1_1.setHorizontalAlignment(SwingConstants.CENTER);
 		lblDuracin_1_1_1_1.setForeground(Color.WHITE);
 		lblDuracin_1_1_1_1.setFont(new Font("Dialog", Font.PLAIN, 18));
 		contentPane.add(lblDuracin_1_1_1_1);
 
-		JCheckBox optimizar = new JCheckBox("Optimizar");
-		sl_contentPane.putConstraint(SpringLayout.WEST, optimizar, 6, SpringLayout.EAST, colorWatermark);
-		optimizar.addKeyListener(new KeyAdapter() {
-			@Override
-			public void keyPressed(KeyEvent e) {
-				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
-					play();
-				}
-			}
-		});
-		optimizar.setHorizontalAlignment(SwingConstants.CENTER);
-		optimizar.setFont(new Font("Dialog", Font.PLAIN, 18));
-		optimizar.setBackground(Color.DARK_GRAY);
-		optimizar.setForeground(Color.WHITE);
-		contentPane.add(optimizar);
-
-		JComboBox comboBox = new JComboBox();
-		comboBox.setFont(new Font("Dialog", Font.PLAIN, 16));
-		sl_contentPane.putConstraint(SpringLayout.NORTH, comboBox, 377, SpringLayout.NORTH, contentPane);
-		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblDuracin_1_1_1_1, -6, SpringLayout.NORTH, comboBox);
-		sl_contentPane.putConstraint(SpringLayout.WEST, comboBox, 0, SpringLayout.WEST, duracionVideo);
-		sl_contentPane.putConstraint(SpringLayout.EAST, comboBox, 0, SpringLayout.EAST, duracionVideo);
-		comboBox.addKeyListener(new KeyAdapter() {
+		calidad = new JComboBox<String>();
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblDuracin_1_1_1_1, -6, SpringLayout.NORTH, calidad);
+		sl_contentPane.putConstraint(SpringLayout.WEST, calidad, 37, SpringLayout.WEST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.EAST, calidad, 0, SpringLayout.EAST, duracionVideo);
+		calidad.setFont(new Font("Dialog", Font.PLAIN, 16));
+		sl_contentPane.putConstraint(SpringLayout.NORTH, calidad, 377, SpringLayout.NORTH, contentPane);
+		calidad.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent e) {
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
@@ -1057,18 +1193,17 @@ public class PlayerFrame extends JFrame {
 			}
 		});
 
-		contentPane.add(comboBox);
+		contentPane.add(calidad);
 
-		comboBox.addItem("Baja");
+		calidad.addItem("Baja");
 
-		comboBox.addItem("Alta");
+		calidad.addItem("Alta");
 
 		JButton btnNewButton = new JButton("");
-		sl_contentPane.putConstraint(SpringLayout.EAST, optimizar, -6, SpringLayout.WEST, btnNewButton);
+		sl_contentPane.putConstraint(SpringLayout.NORTH, btnNewButton, 86, SpringLayout.SOUTH, btnNewButton_1_1_1);
 		sl_contentPane.putConstraint(SpringLayout.WEST, btnNewButton, 510, SpringLayout.WEST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, btnNewButton, -28, SpringLayout.SOUTH, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.EAST, btnNewButton, -107, SpringLayout.EAST, contentPane);
-		sl_contentPane.putConstraint(SpringLayout.NORTH, btnNewButton, 0, SpringLayout.NORTH, colorWatermark);
-		sl_contentPane.putConstraint(SpringLayout.SOUTH, btnNewButton, -4, SpringLayout.SOUTH, posicionWatermark);
 		btnNewButton.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/view.png")));
 		btnNewButton.addKeyListener(new KeyAdapter() {
 			@Override
@@ -1097,8 +1232,6 @@ public class PlayerFrame extends JFrame {
 
 				catch (Exception e1) {
 
-					e1.printStackTrace();
-
 				}
 
 			}
@@ -1106,9 +1239,24 @@ public class PlayerFrame extends JFrame {
 		});
 
 		btnNewButton.setFont(new Font("Dialog", Font.BOLD, 14));
+
 		contentPane.add(btnNewButton);
 
 		JButton btnConvertir = new JButton("");
+
+		btnConvertir.addKeyListener(new KeyAdapter() {
+
+			@Override
+
+			public void keyPressed(KeyEvent e) {
+
+				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+					play();
+				}
+			}
+
+		});
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, btnConvertir, 0, SpringLayout.NORTH, btnNewButton);
 		sl_contentPane.putConstraint(SpringLayout.WEST, btnConvertir, 14, SpringLayout.EAST, btnNewButton);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, btnConvertir, 0, SpringLayout.SOUTH, btnNewButton);
@@ -1121,13 +1269,7 @@ public class PlayerFrame extends JFrame {
 
 					try {
 
-						// -vf "fps=10,scale=320:-1:flags=lanczos" -c:v pam -f image2pipe - | convert
-
-						// -delay 10 - -loop 0 -layers optimize output.gif
-
-						String calidad = "scale=" + anchoVideoTxt.getText() + ":" + largoVideoTxt.getText();
-
-						String archivo = "/home/yeah/output.gif";
+						saberCarpetaGif(3);
 
 						FFmpeg ffmpeg = new FFmpeg();
 
@@ -1141,15 +1283,15 @@ public class PlayerFrame extends JFrame {
 
 						comando.add(fin.getText());
 
-						comando.add("-i");
-
-						comando.add(video);
-
 						comando.add("-r");
 
 						comando.add(rate.getText());
 
-						if (!optimizar.isSelected()) {
+						comando.add("-i");
+
+						comando.add(video);
+
+						if (calidad.getSelectedIndex() == 0) {
 
 							comando.add("-pix_fmt");
 
@@ -1161,36 +1303,316 @@ public class PlayerFrame extends JFrame {
 
 						}
 
-						if (optimizar.isSelected()) {
+						if (calidad.getSelectedIndex() == 0 && !watermark.isSelected() && blur.isSelected()) {
+
+							comando.add("-filter_complex");
+
+							comando.add("[0:v]boxblur=luma_power=" + brillo_1.getText() + ":luma_radius="
+									+ brillo_2.getText() + ":chroma_power=" + color_1.getText() + ":chroma_radius="
+									+ color_2.getText() + "[blurred]");
+
+							comando.add("-map");
+
+							comando.add("[blurred]");
+
+						}
+
+						if (calidad.getSelectedIndex() == 1) {
 
 							comando.add("-filter_complex");
 
 							comando.add(
 									"[0:v] fps=15,scale=w=720:h=-1,split [a][b];[a] palettegen=stats_mode=single [p];[b][p] paletteuse=new=1");
 
-							comando.add("-y");
-
-							comando.add(archivo);
-
-							ffmpeg.run(comando);
-
 						}
 
-						else {
+						if (calidad.getSelectedIndex() == 0 && watermark.isSelected()) {
 
-							comando.add("-y");
+							comando.add("-i");
 
-							comando.add(archivo);
+							comando.add(directorioActual + "watermark.png");
 
-							ffmpeg.run(comando);
+							comando.add("-filter_complex");
+
+							String x = "";
+
+							String y = "";
+
+							String color = "";
+
+							switch (posicionWatermark.getSelectedIndex()) {
+
+							case 0:
+
+								x = "(text_w)/2";
+
+								y = "(text_h)/2";
+
+								break;
+
+							case 1:
+
+								x = "(w-text_w)/2";
+
+								y = "5";
+
+								break;
+
+							case 2:
+
+								x = "(w-text_w)-5";
+
+								y = "(text_h)/2";
+
+								break;
+
+							case 3:
+
+								x = "5";
+
+								y = "(h-text_h)/2";
+
+								break;
+
+							case 4:
+
+								x = "(w-text_w)/2";
+
+								y = "(h-text_h)/2";
+
+								break;
+
+							case 5:
+
+								x = "(w-text_w)-5";
+
+								y = "(h-text_h)/2";
+
+								break;
+
+							case 6:
+
+								x = "5";
+
+								y = "(h-text_h)-5";
+
+								break;
+
+							case 7:
+
+								x = "(w-text_w)/2";
+
+								y = "(h-text_h)-5";
+
+								break;
+
+							case 8:
+
+								x = "(w-text_w)-5";
+
+								y = "(h-text_h)-5";
+
+								break;
+
+							}
+
+							switch (colorWatermark.getSelectedIndex()) {
+
+							case 0:
+
+								color = "black";
+
+								break;
+
+							case 1:
+
+								color = "white";
+
+								break;
+
+							case 2:
+
+								color = "red";
+
+								break;
+
+							case 3:
+
+								color = "blue";
+
+								break;
+
+							case 4:
+
+								color = "yellow";
+
+								break;
+							case 5:
+
+								color = "lime";
+
+								break;
+
+							case 6:
+
+								color = "pink";
+
+								break;
+
+							case 7:
+
+								color = "violet";
+
+								break;
+
+							case 8:
+
+								color = "gray";
+
+								break;
+
+							case 9:
+
+								color = "cyan";
+
+								break;
+
+							case 10:
+
+								color = "darkblue";
+
+								break;
+
+							case 11:
+
+								color = "lightblue";
+
+								break;
+
+							case 12:
+
+								color = "Purple";
+
+								break;
+
+							case 13:
+
+								color = "Magenta";
+
+								break;
+
+							case 14:
+
+								color = "Silver";
+
+								break;
+
+							case 15:
+
+								color = "orange";
+
+								break;
+
+							case 16:
+
+								color = "brown";
+								break;
+
+							case 17:
+
+								color = "maroon";
+
+								break;
+
+							case 18:
+								color = "green";
+
+								break;
+							case 19:
+
+								color = "olive";
+
+								break;
+
+							case 20:
+
+								color = "aquamarine";
+
+								break;
+
+							case 21:
+
+								color = "gold";
+
+								break;
+
+							case 22:
+
+								color = "darkorange";
+
+								break;
+
+							case 23:
+
+								color = "#CFB53B";
+
+								break;
+
+							case 24:
+								color = "chocolate";
+								break;
+
+							case 25:
+								color = "#D4AF37";
+								break;
+
+							case 26:
+								color = "turquoise";
+								break;
+
+							case 27:
+								color = "teal";
+								break;
+
+							case 28:
+								color = "seagreen";
+								break;
+
+							case 29:
+								color = "#78866B";
+								break;
+
+							case 30:
+								color = "#CD7F32";
+								break;
+
+							case 31:
+								color = "#F3E5AB";
+								break;
+
+							}
+
+							comando.add("[0]fps=" + rate.getText() + ",scale=" + anchoVideoTxt.getText() + ":"
+									+ largoVideoTxt.getText()
+									+ "[bg];[bg][1]overlay=main_w-overlay_w-10:main_h-overlay_h-10:format=auto,drawtext=text='"
+									+ textoWatermark.getText() + "':fontsize=" + size.getText() + ":fontcolor=" + color
+									+ ":x=" + x + ":y=" + y + ",split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse");
 						}
 
-						System.out.println("\n----------------------\n CONVERSION TERMINADA");
+						comando.add("-y");
+
+						String archivo = carpeta + extraerNombreArchivo("test.gif");
+
+						comando.add(archivo);
+
+						ffmpeg.run(comando);
+
+						abrirCarpeta("file://" + archivo);
 
 					}
 
 					catch (Exception e) {
-						e.printStackTrace();
+
 					}
 
 				}
@@ -1202,9 +1624,10 @@ public class PlayerFrame extends JFrame {
 		btnConvertir.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/video_2_frame.png")));
 		btnConvertir.setFont(new Font("Dialog", Font.BOLD, 14));
 		contentPane.add(btnConvertir);
-		colorWatermark.setFont(new Font("Dialog", Font.PLAIN, 16));
+		colorWatermark.setFont(new Font("Dialog", Font.PLAIN, 14));
 		colorWatermark.setEnabled(false);
 		colorWatermark.addKeyListener(new KeyAdapter() {
+
 			@Override
 			public void keyPressed(KeyEvent e) {
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
@@ -1213,23 +1636,40 @@ public class PlayerFrame extends JFrame {
 			}
 		});
 
-		colorWatermark.addItem("NEGRO");
+		Colors[] colores = Colors.values();
 
-		colorWatermark.addItem("BLANCO");
+		LinkedList<String> listaColores = new LinkedList<String>();
 
-		colorWatermark.addItem("ROJO");
+		for (int i = 0; i < colores.length; i++) {
+			listaColores.add("" + colores[i]);
+		}
 
-		colorWatermark.addItem("AZUL");
+		for (int x = 0; x < listaColores.size(); x++) {
+			colorWatermark.addItem(listaColores.get(x));
+		}
 
-		colorWatermark.addItem("AMARILLO");
-
-		colorWatermark.addItem("VERDE");
-
-		colorWatermark.addItem("ROSA");
-
-		colorWatermark.addItem("VIOLETA");
-
-		colorWatermark.addItem("GRIS");
+//
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
+//		colorWatermark.addItem("GRIS");
 
 		contentPane.add(colorWatermark);
 
@@ -1250,6 +1690,14 @@ public class PlayerFrame extends JFrame {
 		contentPane.add(duracion);
 
 		inicio = new JTextField();
+		inicio.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyPressed(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+					play();
+				}
+			}
+		});
 		sl_contentPane.putConstraint(SpringLayout.WEST, inicio, 4, SpringLayout.EAST, btnNewButton_1_1);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, inicio, -181, SpringLayout.SOUTH, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.NORTH, inicio, 28, SpringLayout.SOUTH, positionSlider);
@@ -1266,13 +1714,24 @@ public class PlayerFrame extends JFrame {
 		contentPane.add(lblNewLabel_1);
 
 		JLabel lblNewLabel = new JLabel("");
+		sl_contentPane.putConstraint(SpringLayout.NORTH, size, 26, SpringLayout.SOUTH, lblNewLabel);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_1, 0, SpringLayout.SOUTH, lblNewLabel);
 		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel, 0, SpringLayout.WEST, videoOutput);
 		lblNewLabel.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/start.png")));
 		contentPane.add(lblNewLabel);
 
-		JCheckBox watermark = new JCheckBox("WaterMark");
-		sl_contentPane.putConstraint(SpringLayout.NORTH, watermark, 11, SpringLayout.SOUTH, comboBox);
+		watermark = new JCheckBox("WaterMark");
+		watermark.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyPressed(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+					play();
+				}
+			}
+		});
+		sl_contentPane.putConstraint(SpringLayout.NORTH, watermark, 11, SpringLayout.SOUTH, calidad);
+		sl_contentPane.putConstraint(SpringLayout.WEST, watermark, 20, SpringLayout.WEST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.EAST, watermark, -23, SpringLayout.WEST, videoOutput);
 
 		watermark.addItemListener(new ItemListener() {
 
@@ -1304,8 +1763,6 @@ public class PlayerFrame extends JFrame {
 			}
 		});
 		watermark.setBackground(Color.DARK_GRAY);
-		sl_contentPane.putConstraint(SpringLayout.WEST, watermark, 20, SpringLayout.WEST, contentPane);
-		sl_contentPane.putConstraint(SpringLayout.EAST, watermark, 10, SpringLayout.EAST, duracionVideo);
 		watermark.setHorizontalAlignment(SwingConstants.CENTER);
 		watermark.setForeground(Color.WHITE);
 		watermark.setFont(new Font("Dialog", Font.PLAIN, 18));
@@ -1313,9 +1770,9 @@ public class PlayerFrame extends JFrame {
 
 		textoWatermark = new JTextField();
 		sl_contentPane.putConstraint(SpringLayout.NORTH, textoWatermark, 13, SpringLayout.SOUTH, watermark);
+		sl_contentPane.putConstraint(SpringLayout.WEST, textoWatermark, 37, SpringLayout.WEST, contentPane);
 		textoWatermark.setEnabled(false);
 		textoWatermark.setToolTipText("Inserta el texto para la marca de agua");
-		sl_contentPane.putConstraint(SpringLayout.WEST, textoWatermark, 0, SpringLayout.WEST, duracionVideo);
 		textoWatermark.setHorizontalAlignment(SwingConstants.CENTER);
 		textoWatermark.setColumns(10);
 		contentPane.add(textoWatermark);
@@ -1360,11 +1817,25 @@ public class PlayerFrame extends JFrame {
 
 			}
 
+			@Override
+			public void keyPressed(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+					play();
+				}
+			}
 		});
 
 		size.setText("24");
 		size.setHorizontalAlignment(SwingConstants.CENTER);
 		contentPane.add(size);
+		posicionWatermark.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyPressed(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+					play();
+				}
+			}
+		});
 		posicionWatermark.setEnabled(false);
 
 		posicionWatermark.setFont(new Font("Dialog", Font.PLAIN, 16));
@@ -1377,26 +1848,36 @@ public class PlayerFrame extends JFrame {
 		posicionWatermark.addItem("MEDIO - CENTRO");
 		posicionWatermark.addItem("MEDIO - DERECHA");
 		posicionWatermark.addItem("ABAJO - IZQUIERDA");
-		posicionWatermark.addItem("ABAJO - DENTRO");
+		posicionWatermark.addItem("ABAJO - CENTRO");
 		posicionWatermark.addItem("ABAJO - DERECHA");
 
 		JLabel lblNewLabel_2 = new JLabel("");
-		sl_contentPane.putConstraint(SpringLayout.WEST, colorWatermark, 6, SpringLayout.EAST, lblNewLabel_2);
-		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel_2, 37, SpringLayout.WEST, contentPane);
-		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_2, -581, SpringLayout.EAST, contentPane);
-		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_2, -16, SpringLayout.NORTH, posicionWatermark);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, textoWatermark, -28, SpringLayout.NORTH, lblNewLabel_2);
+		sl_contentPane.putConstraint(SpringLayout.WEST, colorWatermark, 6, SpringLayout.EAST, lblNewLabel_2);
+		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel_2, 0, SpringLayout.WEST, duracionVideo);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_2, 0, SpringLayout.SOUTH, colorWatermark);
+		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_2, -595, SpringLayout.EAST, contentPane);
+		lblNewLabel_2.setHorizontalAlignment(SwingConstants.RIGHT);
 		lblNewLabel_2.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/color.png")));
 		contentPane.add(lblNewLabel_2);
 
 		JLabel lblNewLabel_3 = new JLabel("");
-		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel, -10, SpringLayout.NORTH, lblNewLabel_3);
-		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel_3, 6, SpringLayout.EAST, textoWatermark);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_3, -21, SpringLayout.NORTH, colorWatermark);
+		sl_contentPane.putConstraint(SpringLayout.WEST, size, 13, SpringLayout.EAST, lblNewLabel_3);
+		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel_3, 157, SpringLayout.WEST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel, -10, SpringLayout.NORTH, lblNewLabel_3);
 		lblNewLabel_3.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/size_Text.png")));
 		contentPane.add(lblNewLabel_3);
 
 		fin = new JTextField();
+		fin.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyPressed(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+					play();
+				}
+			}
+		});
 		sl_contentPane.putConstraint(SpringLayout.EAST, btnConvertir, 0, SpringLayout.EAST, fin);
 		sl_contentPane.putConstraint(SpringLayout.EAST, btnNewButton_1_1_1, -6, SpringLayout.WEST, fin);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, fin, 0, SpringLayout.SOUTH, btnNewButton_1_1);
@@ -1406,21 +1887,52 @@ public class PlayerFrame extends JFrame {
 		fin.setColumns(10);
 		contentPane.add(fin);
 
-		JCheckBox chckbxDesenfoque = new JCheckBox("Desenfoque");
-		sl_contentPane.putConstraint(SpringLayout.NORTH, optimizar, 47, SpringLayout.SOUTH, chckbxDesenfoque);
-		sl_contentPane.putConstraint(SpringLayout.EAST, chckbxDesenfoque, 0, SpringLayout.EAST, optimizar);
-		chckbxDesenfoque.setHorizontalAlignment(SwingConstants.CENTER);
-		chckbxDesenfoque.setForeground(Color.WHITE);
-		chckbxDesenfoque.setFont(new Font("Dialog", Font.PLAIN, 18));
-		chckbxDesenfoque.setBackground(Color.DARK_GRAY);
-		contentPane.add(chckbxDesenfoque);
+		blur = new JCheckBox("Desenfoque");
 
-		blur_1 = new JTextField();
-		sl_contentPane.putConstraint(SpringLayout.WEST, blur_1, 6, SpringLayout.EAST, chckbxDesenfoque);
-		sl_contentPane.putConstraint(SpringLayout.EAST, blur_1, -108, SpringLayout.EAST, contentPane);
-		sl_contentPane.putConstraint(SpringLayout.NORTH, chckbxDesenfoque, 5, SpringLayout.NORTH, blur_1);
+		blur.addItemListener(new ItemListener() {
 
-		blur_1.addKeyListener(new KeyAdapter() {
+			public void itemStateChanged(ItemEvent arg0) {
+
+				if (blur.isSelected()) {
+					brillo_1.setEnabled(true);
+					brillo_2.setEnabled(true);
+					color_1.setEnabled(true);
+					color_2.setEnabled(true);
+				}
+
+				else {
+
+					brillo_1.setEnabled(false);
+					brillo_2.setEnabled(false);
+					color_1.setEnabled(false);
+					color_2.setEnabled(false);
+				}
+
+			}
+
+		});
+
+		sl_contentPane.putConstraint(SpringLayout.NORTH, blur, 0, SpringLayout.NORTH, lblNewLabel_3);
+		sl_contentPane.putConstraint(SpringLayout.WEST, blur, 6, SpringLayout.EAST, size);
+		sl_contentPane.putConstraint(SpringLayout.EAST, blur, -71, SpringLayout.EAST, lblNewLabel_1);
+		blur.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyPressed(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+					play();
+				}
+			}
+		});
+		blur.setHorizontalAlignment(SwingConstants.CENTER);
+		blur.setForeground(Color.WHITE);
+		blur.setFont(new Font("Dialog", Font.PLAIN, 20));
+		blur.setBackground(Color.DARK_GRAY);
+		contentPane.add(blur);
+
+		brillo_1 = new JTextField();
+		brillo_1.setEnabled(false);
+
+		brillo_1.addKeyListener(new KeyAdapter() {
 
 			@Override
 
@@ -1428,68 +1940,207 @@ public class PlayerFrame extends JFrame {
 
 				try {
 
-					if (Integer.parseInt(blur_1.getText()) <= 0) {
-						blur_1.setText("4");
+					if (Integer.parseInt(brillo_1.getText()) <= 0) {
+						brillo_1.setText("5");
 					}
 
 				}
 
 				catch (Exception e1) {
-					blur_1.setText("4");
+					brillo_1.setText("5");
 				}
 
 			}
-
-		});
-		blur_1.setText("4");
-		blur_1.setHorizontalAlignment(SwingConstants.CENTER);
-		sl_contentPane.putConstraint(SpringLayout.NORTH, blur_1, 28, SpringLayout.SOUTH, btnNewButton_1_1_1);
-		sl_contentPane.putConstraint(SpringLayout.SOUTH, blur_1, -116, SpringLayout.SOUTH, contentPane);
-		blur_1.setFont(new Font("Dialog", Font.PLAIN, 16));
-		contentPane.add(blur_1);
-		blur_1.setColumns(10);
-
-		blur_2 = new JTextField();
-		sl_contentPane.putConstraint(SpringLayout.EAST, blur_2, -25, SpringLayout.EAST, contentPane);
-
-		blur_2.addKeyListener(new KeyAdapter() {
 
 			@Override
-
-			public void keyReleased(KeyEvent e) {
-
-				try {
-
-					if (Integer.parseInt(blur_2.getText()) <= 0) {
-						blur_2.setText("3");
-					}
-
+			public void keyPressed(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+					play();
 				}
-
-				catch (Exception e1) {
-					blur_2.setText("3");
-				}
-
 			}
-
 		});
 
-		sl_contentPane.putConstraint(SpringLayout.NORTH, blur_2, -38, SpringLayout.SOUTH, size);
-		sl_contentPane.putConstraint(SpringLayout.SOUTH, blur_2, 0, SpringLayout.SOUTH, size);
-		blur_2.setText("3");
-		blur_2.setHorizontalAlignment(SwingConstants.CENTER);
-		blur_2.setFont(new Font("Dialog", Font.PLAIN, 16));
-		blur_2.setColumns(10);
-		contentPane.add(blur_2);
+		brillo_1.setText("5");
+		brillo_1.setHorizontalAlignment(SwingConstants.CENTER);
+		brillo_1.setFont(new Font("Dialog", Font.PLAIN, 16));
+		contentPane.add(brillo_1);
+		brillo_1.setColumns(10);
 
-		JLabel lblNewLabel_4 = new JLabel(":");
-		sl_contentPane.putConstraint(SpringLayout.NORTH, lblNewLabel_4, 37, SpringLayout.SOUTH, fin);
-		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel_4, 583, SpringLayout.WEST, contentPane);
-		sl_contentPane.putConstraint(SpringLayout.WEST, blur_2, 3, SpringLayout.EAST, lblNewLabel_4);
-		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_4, 12, SpringLayout.EAST, blur_1);
-		lblNewLabel_4.setForeground(Color.WHITE);
-		lblNewLabel_4.setFont(new Font("Dialog", Font.BOLD, 16));
+		JLabel lblNewLabel_4 = new JLabel("");
+		sl_contentPane.putConstraint(SpringLayout.EAST, colorWatermark, -6, SpringLayout.WEST, lblNewLabel_4);
+		sl_contentPane.putConstraint(SpringLayout.EAST, posicionWatermark, -6, SpringLayout.WEST, lblNewLabel_4);
+		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel_4, 272, SpringLayout.WEST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_4, 0, SpringLayout.SOUTH, posicionWatermark);
+		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_4, -365, SpringLayout.EAST, contentPane);
+		lblNewLabel_4.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/pintura.png")));
 		contentPane.add(lblNewLabel_4);
+
+		color_1 = new JTextField();
+		color_1.setEnabled(false);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, brillo_1, -11, SpringLayout.NORTH, color_1);
+		color_1.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyReleased(KeyEvent e) {
+				try {
+
+					if (Integer.parseInt(color_1.getText()) <= 0) {
+						color_1.setText("5");
+					}
+
+				} catch (Exception e1) {
+					color_1.setText("5");
+				}
+
+			}
+
+			@Override
+			public void keyPressed(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+					play();
+				}
+			}
+		});
+		sl_contentPane.putConstraint(SpringLayout.NORTH, color_1, -5, SpringLayout.NORTH, posicionWatermark);
+		sl_contentPane.putConstraint(SpringLayout.WEST, color_1, 16, SpringLayout.EAST, lblNewLabel_4);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, color_1, 10, SpringLayout.SOUTH, btnNewButton);
+		color_1.setText("5");
+		color_1.setHorizontalAlignment(SwingConstants.CENTER);
+		color_1.setFont(new Font("Dialog", Font.PLAIN, 16));
+		color_1.setColumns(10);
+		contentPane.add(color_1);
+
+		JLabel lblNewLabel_6 = new JLabel("");
+		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel_6, 272, SpringLayout.WEST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.EAST, size, -6, SpringLayout.WEST, lblNewLabel_6);
+		sl_contentPane.putConstraint(SpringLayout.NORTH, lblNewLabel_6, 56, SpringLayout.SOUTH, inicio);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_6, -8, SpringLayout.NORTH, lblNewLabel_4);
+		sl_contentPane.putConstraint(SpringLayout.WEST, brillo_1, 11, SpringLayout.EAST, lblNewLabel_6);
+		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_6, -360, SpringLayout.EAST, contentPane);
+		lblNewLabel_6.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/brillo.png")));
+		contentPane.add(lblNewLabel_6);
+
+		brillo_2 = new JTextField();
+		brillo_2.setEnabled(false);
+		brillo_2.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyReleased(KeyEvent e) {
+				try {
+
+					if (Integer.parseInt(brillo_2.getText()) <= 0) {
+						brillo_2.setText("3");
+					}
+
+				} catch (Exception e1) {
+					brillo_2.setText("3");
+				}
+
+			}
+
+			@Override
+			public void keyPressed(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+					play();
+				}
+			}
+		});
+		sl_contentPane.putConstraint(SpringLayout.EAST, brillo_1, -30, SpringLayout.WEST, brillo_2);
+		sl_contentPane.putConstraint(SpringLayout.WEST, brillo_2, 434, SpringLayout.WEST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.EAST, brillo_2, -18, SpringLayout.WEST, btnNewButton);
+		brillo_2.setText("3");
+		brillo_2.setHorizontalAlignment(SwingConstants.CENTER);
+		brillo_2.setFont(new Font("Dialog", Font.PLAIN, 16));
+		brillo_2.setColumns(10);
+		contentPane.add(brillo_2);
+
+		JLabel lblNewLabel_7 = new JLabel("Power");
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, blur, -7, SpringLayout.NORTH, lblNewLabel_7);
+		sl_contentPane.putConstraint(SpringLayout.NORTH, brillo_1, 8, SpringLayout.SOUTH, lblNewLabel_7);
+		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel_7, 11, SpringLayout.EAST, lblNewLabel_6);
+		sl_contentPane.putConstraint(SpringLayout.NORTH, lblNewLabel_7, 21, SpringLayout.NORTH, size);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_7, 0, SpringLayout.SOUTH, size);
+		lblNewLabel_7.setHorizontalAlignment(SwingConstants.CENTER);
+		lblNewLabel_7.setFont(new Font("Dialog", Font.PLAIN, 16));
+		lblNewLabel_7.setForeground(Color.WHITE);
+		contentPane.add(lblNewLabel_7);
+
+		JLabel lblNewLabel_5_1_1 = new JLabel("Radio");
+		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_7, -30, SpringLayout.WEST, lblNewLabel_5_1_1);
+		sl_contentPane.putConstraint(SpringLayout.NORTH, brillo_2, 9, SpringLayout.SOUTH, lblNewLabel_5_1_1);
+		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel_5_1_1, 0, SpringLayout.WEST, brillo_2);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_5_1_1, 0, SpringLayout.SOUTH, size);
+		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_5_1_1, 0, SpringLayout.EAST, lblNewLabel_1);
+		lblNewLabel_5_1_1.setHorizontalAlignment(SwingConstants.LEFT);
+		lblNewLabel_5_1_1.setForeground(Color.WHITE);
+		lblNewLabel_5_1_1.setFont(new Font("Dialog", Font.PLAIN, 16));
+		contentPane.add(lblNewLabel_5_1_1);
+
+		color_2 = new JTextField();
+		color_2.setEnabled(false);
+		color_2.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyReleased(KeyEvent e) {
+				try {
+
+					if (Integer.parseInt(color_2.getText()) <= 0) {
+						color_2.setText("3");
+					}
+
+				} catch (Exception e1) {
+					color_2.setText("3");
+				}
+
+			}
+
+			@Override
+			public void keyPressed(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+					play();
+				}
+			}
+		});
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, brillo_2, -11, SpringLayout.NORTH, color_2);
+		sl_contentPane.putConstraint(SpringLayout.EAST, color_1, -30, SpringLayout.WEST, color_2);
+		sl_contentPane.putConstraint(SpringLayout.EAST, color_2, -18, SpringLayout.WEST, btnNewButton);
+		sl_contentPane.putConstraint(SpringLayout.WEST, color_2, 434, SpringLayout.WEST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.NORTH, color_2, -5, SpringLayout.NORTH, posicionWatermark);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, color_2, 10, SpringLayout.SOUTH, btnNewButton);
+		color_2.setText("3");
+		color_2.setHorizontalAlignment(SwingConstants.CENTER);
+		color_2.setFont(new Font("Dialog", Font.PLAIN, 16));
+		color_2.setColumns(10);
+		contentPane.add(color_2);
+
+		guardarMismaCarpeta = new JCheckBox("Guardar en la");
+		guardarMismaCarpeta.setHorizontalAlignment(SwingConstants.CENTER);
+		guardarMismaCarpeta.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyPressed(KeyEvent e) {
+
+				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+					play();
+				}
+
+			}
+		});
+		guardarMismaCarpeta.setForeground(Color.WHITE);
+		guardarMismaCarpeta.setBackground(Color.DARK_GRAY);
+		sl_contentPane.putConstraint(SpringLayout.NORTH, guardarMismaCarpeta, 19, SpringLayout.SOUTH,
+				btnNewButton_1_1_1);
+		sl_contentPane.putConstraint(SpringLayout.WEST, guardarMismaCarpeta, 0, SpringLayout.WEST, btnNewButton_1_1_1);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, guardarMismaCarpeta, -19, SpringLayout.SOUTH, lblNewLabel_3);
+		sl_contentPane.putConstraint(SpringLayout.EAST, guardarMismaCarpeta, -25, SpringLayout.EAST, contentPane);
+		guardarMismaCarpeta.setFont(new Font("Dialog", Font.PLAIN, 16));
+		contentPane.add(guardarMismaCarpeta);
+
+		JLabel lblNewLabel_5 = new JLabel("misma carpeta");
+		lblNewLabel_5.setHorizontalAlignment(SwingConstants.CENTER);
+		lblNewLabel_5.setForeground(Color.WHITE);
+		lblNewLabel_5.setFont(new Font("Dialog", Font.PLAIN, 16));
+		sl_contentPane.putConstraint(SpringLayout.NORTH, lblNewLabel_5, 0, SpringLayout.NORTH, lblNewLabel_6);
+		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel_5, 6, SpringLayout.EAST, lblNewLabel_5_1_1);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_5, -14, SpringLayout.NORTH, btnNewButton);
+		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_5, 0, SpringLayout.EAST, btnConvertir);
+		contentPane.add(lblNewLabel_5);
 
 		playbin = new PlayBin("GstDumbPlayer");
 

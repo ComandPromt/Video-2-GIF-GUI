@@ -5,40 +5,69 @@
 	<artifactId>Video-2-GIF-GUI</artifactId>
 	<version>1.0.0-RC4</version>
 	<name>Video-2-GIF-GUI</name>
+	
 	<dependencies>
+	
+		<dependency>
+    		<groupId>org.slf4j</groupId>
+    		<artifactId>slf4j-api</artifactId>
+    		<version>1.7.30</version>
+		</dependency>
+	
+		<dependency>
+    		<groupId>org.slf4j</groupId>
+    		<artifactId>slf4j-simple</artifactId>
+    		<version>1.7.30</version>
+		</dependency>
+		<dependency>
+    <groupId>org.freedesktop.gstreamer</groupId>
+    <artifactId>gst1-java-swing</artifactId>
+    <version>0.9.0</version>
+</dependency>
 		<dependency>
 			<groupId>org.freedesktop.gstreamer</groupId>
 			<artifactId>gst1-java-core</artifactId>
 			<version>1.1.0</version>
 		</dependency>
+		
 		<dependency>
-  <groupId>com.drewnoakes</groupId>
-  <artifactId>metadata-extractor</artifactId>
-  <version>2.14.0</version>
+  			<groupId>com.drewnoakes</groupId>
+  			<artifactId>metadata-extractor</artifactId>
+  			<version>2.14.0</version>
+  		</dependency>
   
-</dependency>
 		<dependency>
-    <groupId>org.webjars</groupId>
-    <artifactId>imagemin-gifsicle</artifactId>
-    <version>4.0.0</version>
-</dependency>
+			<groupId>javax.json</groupId>
+			<artifactId>javax.json-api</artifactId>
+			<version>1.1.4</version>
+		</dependency>
 
-<dependency>
-    <groupId>net.bramp.ffmpeg</groupId>
-    <artifactId>ffmpeg</artifactId>
-    <version>0.6.2</version>
-</dependency>
+		<dependency>
+			<groupId>org.json</groupId>
+			<artifactId>json</artifactId>
+			<version>20180813</version>
+		</dependency>
+		
+		<dependency>
+    		<groupId>net.bramp.ffmpeg</groupId>
+    		<artifactId>ffmpeg</artifactId>
+    		<version>0.6.2</version>
+		</dependency>
+		
 		<dependency>
 			<groupId>net.java.dev.jna</groupId>
 			<artifactId>jna</artifactId>
 			<version>5.5.0</version>
 		</dependency>
+		
 		<dependency>
 			<groupId>net.java.dev.jna</groupId>
 			<artifactId>jna-platform</artifactId>
 			<version>5.5.0</version>
 		</dependency>
+		
 	</dependencies>
+	
 	<build>
 		<plugins>
 			<plugin>

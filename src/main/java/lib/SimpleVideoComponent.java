@@ -19,29 +19,40 @@
 
 package lib;
 
-import java.awt.*;
-import java.beans.*;
-import javax.swing.*;
-import java.awt.event.*;
-import java.awt.image.*;
-
-import java.nio.*;
-
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GraphicsConfiguration;
+import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
+import java.awt.image.VolatileImage;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.freedesktop.gstreamer.Element;
-import org.freedesktop.gstreamer.Structure;
-import org.freedesktop.gstreamer.elements.AppSink;
+import javax.swing.JComponent;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+
 import org.freedesktop.gstreamer.Buffer;
 import org.freedesktop.gstreamer.Caps;
+import org.freedesktop.gstreamer.Element;
 import org.freedesktop.gstreamer.FlowReturn;
 import org.freedesktop.gstreamer.Sample;
+import org.freedesktop.gstreamer.Structure;
+import org.freedesktop.gstreamer.elements.AppSink;
 
-/**
- * @author gstreamer-java
- * @link https://github.com/gstreamer-java
- */
 public class SimpleVideoComponent extends JComponent {
 
 	private static final long serialVersionUID = 1L;
@@ -328,7 +339,7 @@ public class SimpleVideoComponent extends JComponent {
 			update(currentImage.getWidth(), currentImage.getHeight());
 		}
 
-		//@Override
+		// @Override
 		public FlowReturn newSample(AppSink elem) {
 			Sample sample = elem.pullSample();
 			Structure capsStruct = sample.getCaps().getStructure(0);
@@ -344,7 +355,7 @@ public class SimpleVideoComponent extends JComponent {
 			return FlowReturn.OK;
 		}
 
-		//@Override
+		// @Override
 		public FlowReturn newPreroll(AppSink elem) {
 			Sample sample = elem.pullPreroll();
 			Structure capsStruct = sample.getCaps().getStructure(0);
