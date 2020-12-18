@@ -558,10 +558,6 @@ public class PlayerFrame extends JFrame {
 
 		{
 
-			// duration = (long) segundosFin;
-
-			System.out.println("resultado: " + saberSegundosActual(inicio.getText(), duration / 1000000000));
-
 			duration = (long) convertirASegundos(fin.getText()) * 1000000000;
 
 			playbin.seek((long) (saberSegundosActual(inicio.getText(), duration / 1000000000) * duration),
@@ -570,7 +566,7 @@ public class PlayerFrame extends JFrame {
 		}
 
 		else {
-			System.out.println("duracion: " + duration);
+
 			playbin.seek((long) ((double) cuenta.get(0) * duration), TimeUnit.NANOSECONDS);
 		}
 
