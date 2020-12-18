@@ -690,7 +690,7 @@ public class PlayerFrame extends JFrame {
 
 			// make the frame half the height and width
 
-			frame.setSize(700, 680);
+			frame.setSize(700, 710);
 
 			// center the jframe on screen
 			frame.setLocationRelativeTo(null);
