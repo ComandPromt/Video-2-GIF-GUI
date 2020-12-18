@@ -19,11 +19,13 @@
     		<artifactId>slf4j-simple</artifactId>
     		<version>1.7.30</version>
 		</dependency>
+		
 		<dependency>
-    <groupId>org.freedesktop.gstreamer</groupId>
-    <artifactId>gst1-java-swing</artifactId>
-    <version>0.9.0</version>
-</dependency>
+    			<groupId>org.freedesktop.gstreamer</groupId>
+    			<artifactId>gst1-java-swing</artifactId>
+    			<version>0.9.0</version>
+		</dependency>
+		
 		<dependency>
 			<groupId>org.freedesktop.gstreamer</groupId>
 			<artifactId>gst1-java-core</artifactId>
@@ -49,10 +51,10 @@
 		</dependency>
 		
 		<dependency>
-    		<groupId>net.bramp.ffmpeg</groupId>
-    		<artifactId>ffmpeg</artifactId>
-    		<version>0.6.2</version>
-		</dependency>
+    			<groupId>net.bramp.ffmpeg</groupId>
+    			<artifactId>ffmpeg</artifactId>
+    			<version>0.6.2</version>
+			</dependency>
 		
 		<dependency>
 			<groupId>net.java.dev.jna</groupId>
