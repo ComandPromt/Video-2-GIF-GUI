@@ -159,6 +159,28 @@ public class PlayerFrame extends JFrame {
 
 	}
 
+	private void ponerDuracionFin() {
+
+		String positionVideo = calcularPosicionVideo();
+
+		segundosFin = convertirASegundos(positionVideo);
+
+		if (segundosInicio == segundosFin || (segundosFin > 0f && (segundosInicio > segundosFin))) {
+
+			segundosFin = convertirASegundos(duracion.getText());
+
+			positionVideo = duracion.getText();
+
+			duracionVideo.setText("");
+
+		}
+
+		ponerDuracionGif();
+
+		fin.setText(positionVideo);
+
+	}
+
 	private void ponerDuracionGif() {
 
 		DecimalFormat df = new DecimalFormat("0.000");
@@ -701,6 +723,34 @@ public class PlayerFrame extends JFrame {
 
 	}
 
+	private void ponerDuracionInicio() {
+
+		try {
+
+			String positionVideo = calcularPosicionVideo();
+
+			segundosInicio = convertirASegundos(positionVideo);
+
+			if (segundosInicio == segundosFin || (segundosFin > 0f && (segundosInicio > segundosFin))) {
+
+				segundosInicio = 0;
+
+				positionVideo = "00:00:0.0";
+
+				duracionVideo.setText("");
+
+			}
+
+			ponerDuracionGif();
+
+			inicio.setText(positionVideo);
+
+		} catch (Exception e1) {
+
+		}
+
+	}
+
 	public PlayerFrame() {
 		setIconImage(
 				Toolkit.getDefaultToolkit().getImage(PlayerFrame.class.getResource("/imagenes/video_2_frame.png")));
@@ -956,30 +1006,7 @@ public class PlayerFrame extends JFrame {
 
 			public void mousePressed(MouseEvent e) {
 
-				try {
-
-					String positionVideo = calcularPosicionVideo();
-
-					segundosInicio = convertirASegundos(positionVideo);
-
-					if (segundosFin > 0f && (segundosInicio > segundosFin)) {
-
-						segundosInicio = 0;
-
-						positionVideo = "00:00:0.0";
-
-						duracionVideo.setText("");
-
-					}
-
-					else {
-						ponerDuracionGif();
-					}
-
-					inicio.setText(positionVideo);
-
-				} catch (Exception e1) {
-				}
+				ponerDuracionInicio();
 			}
 
 		});
@@ -1010,25 +1037,7 @@ public class PlayerFrame extends JFrame {
 
 			public void mousePressed(MouseEvent e) {
 
-				String positionVideo = calcularPosicionVideo();
-
-				segundosFin = convertirASegundos(positionVideo);
-
-				if (segundosFin > 0f && (segundosInicio > segundosFin)) {
-
-					segundosFin = convertirASegundos(duracion.getText());
-
-					positionVideo = duracion.getText();
-
-					duracionVideo.setText("");
-
-				}
-
-				else {
-					ponerDuracionGif();
-				}
-
-				fin.setText(positionVideo);
+				ponerDuracionFin();
 
 			}
 
@@ -1038,6 +1047,7 @@ public class PlayerFrame extends JFrame {
 		contentPane.add(btnNewButton_1_1_1);
 
 		JLabel lblDuracin = new JLabel("Duración GIF");
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, lblDuracin, 10, SpringLayout.WEST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.EAST, lblDuracin, -5, SpringLayout.WEST, videoOutput);
 		lblDuracin.setHorizontalAlignment(SwingConstants.CENTER);
@@ -1701,6 +1711,15 @@ public class PlayerFrame extends JFrame {
 		inicio.setColumns(10);
 
 		JLabel lblNewLabel_1 = new JLabel("");
+		lblNewLabel_1.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+
+				fin.setText(duracion.getText());
+				ponerDuracionFin();
+
+			}
+		});
 		sl_contentPane.putConstraint(SpringLayout.EAST, inicio, -82, SpringLayout.WEST, lblNewLabel_1);
 		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_1, -6, SpringLayout.WEST, btnNewButton_1_1_1);
 		lblNewLabel_1.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/flag.png")));
@@ -1710,6 +1729,16 @@ public class PlayerFrame extends JFrame {
 		contentPane.add(lblNewLabel_1);
 
 		JLabel lblNewLabel = new JLabel("");
+		lblNewLabel.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+
+				inicio.setText("00:00:0.0");
+
+				ponerDuracionInicio();
+
+			}
+		});
 		sl_contentPane.putConstraint(SpringLayout.NORTH, size, 26, SpringLayout.SOUTH, lblNewLabel);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_1, 0, SpringLayout.SOUTH, lblNewLabel);
 		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel, 0, SpringLayout.WEST, videoOutput);
