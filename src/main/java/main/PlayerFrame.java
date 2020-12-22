@@ -159,7 +159,7 @@ public class PlayerFrame extends JFrame {
 
 	}
 
-	private void ponerDuracionFin() {
+	private void ponerDuracionFin(boolean filtro) {
 
 		String positionVideo = calcularPosicionVideo();
 
@@ -177,9 +177,13 @@ public class PlayerFrame extends JFrame {
 
 		}
 
-		ponerDuracionGif();
+		if (filtro) {
+			segundosFin = convertirASegundos(fin.getText());
+		}
 
 		fin.setText(positionVideo);
+
+		ponerDuracionGif();
 
 	}
 
@@ -369,9 +373,13 @@ public class PlayerFrame extends JFrame {
 	}
 
 	private void inicializar() {
+
 		inicio.setText("00:00:0.0");
 
 		ponerDuracionInicio(false);
+
+		inicio.setText("00:00:0.0");
+
 	}
 
 	static String calcularSegundosActual(Object obj1, Object obj2) {
@@ -548,34 +556,28 @@ public class PlayerFrame extends JFrame {
 
 			try {
 
-				String resultado;
+				InputStream inputstream = new FileInputStream(video);
 
-				ProcessBuilder processBuilder = new ProcessBuilder("ffprobe", video);
+				Metadata metadata = ImageMetadataReader.readMetadata(inputstream);
 
-				processBuilder.redirectErrorStream(true);
+				String etiqueta = "";
 
-				Process process = processBuilder.start();
+				String resultado = "";
 
-				StringBuilder processOutput = new StringBuilder();
+				for (Directory directory : metadata.getDirectories()) {
 
-				try (BufferedReader processOutputReader = new BufferedReader(
-						new InputStreamReader(process.getInputStream()));) {
+					for (com.drew.metadata.Tag tag : directory.getTags()) {
 
-					String readLine;
+						etiqueta = tag.toString();
 
-					while ((readLine = processOutputReader.readLine()) != null) {
+						if (etiqueta.contains("Duration")) {
+							resultado = etiqueta.substring(etiqueta.indexOf("-") + 1, etiqueta.length());
 
-						if (readLine.contains("Duration")) {
-							processOutput.append(readLine + System.lineSeparator());
 						}
 
 					}
 
 				}
-
-				resultado = processOutput.toString().trim();
-
-				resultado = resultado.substring(resultado.indexOf("Duration") + 9, resultado.indexOf(","));
 
 				resultado = resultado.trim();
 
@@ -1010,6 +1012,8 @@ public class PlayerFrame extends JFrame {
 
 				ponerDuracionInicio(true);
 
+				ponerDuracionGif();
+
 			}
 
 		});
@@ -1040,8 +1044,8 @@ public class PlayerFrame extends JFrame {
 
 			public void mousePressed(MouseEvent e) {
 
-				ponerDuracionFin();
-
+				ponerDuracionFin(false);
+				ponerDuracionGif();
 			}
 
 		});
@@ -1662,34 +1666,34 @@ public class PlayerFrame extends JFrame {
 		contentPane.add(colorWatermark);
 
 		tiempo = new JLabel("");
-		
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, btnNewButton_1_1, 6, SpringLayout.SOUTH, tiempo);
 		sl_contentPane.putConstraint(SpringLayout.WEST, btnNewButton_1_1, 0, SpringLayout.WEST, tiempo);
 		sl_contentPane.putConstraint(SpringLayout.NORTH, tiempo, 6, SpringLayout.SOUTH, positionSlider);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, tiempo, -217, SpringLayout.SOUTH, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.WEST, tiempo, 92, SpringLayout.EAST, lblDuracin_1_1_1_1);
-		
+
 		tiempo.setFont(new Font("Dialog", Font.PLAIN, 12));
-		
+
 		tiempo.setForeground(Color.WHITE);
-		
+
 		contentPane.add(tiempo);
 
 		duracion = new JLabel("");
-		
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, duracion, 37, SpringLayout.SOUTH, videoOutput);
 		sl_contentPane.putConstraint(SpringLayout.EAST, duracion, -43, SpringLayout.EAST, contentPane);
 		duracion.setForeground(Color.WHITE);
 		contentPane.add(duracion);
 
 		inicio = new JTextField();
-		
+
 		inicio.setText("00:00:0.0");
-		
+
 		inicio.addKeyListener(new KeyAdapter() {
-			
+
 			@Override
-			
+
 			public void keyPressed(KeyEvent e) {
 
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
@@ -1707,7 +1711,7 @@ public class PlayerFrame extends JFrame {
 			}
 
 			@Override
-			
+
 			public void keyReleased(KeyEvent e) {
 
 				if (inicio.getText().trim().isEmpty()) {
@@ -1719,7 +1723,7 @@ public class PlayerFrame extends JFrame {
 			}
 
 		});
-		
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, inicio, 4, SpringLayout.EAST, btnNewButton_1_1);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, inicio, -181, SpringLayout.SOUTH, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.NORTH, inicio, 28, SpringLayout.SOUTH, positionSlider);
@@ -1727,20 +1731,21 @@ public class PlayerFrame extends JFrame {
 		inicio.setColumns(10);
 
 		JLabel lblNewLabel_1 = new JLabel("");
-		
+
 		lblNewLabel_1.addMouseListener(new MouseAdapter() {
-			
+
 			@Override
-			
+
 			public void mousePressed(MouseEvent e) {
 
 				fin.setText(duracion.getText());
-				ponerDuracionFin();
+
+				ponerDuracionFin(false);
 
 			}
-			
+
 		});
-		
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, inicio, -82, SpringLayout.WEST, lblNewLabel_1);
 		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_1, -6, SpringLayout.WEST, btnNewButton_1_1_1);
 		lblNewLabel_1.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/flag.png")));
@@ -1766,21 +1771,21 @@ public class PlayerFrame extends JFrame {
 		contentPane.add(lblNewLabel);
 
 		watermark = new JCheckBox("WaterMark");
-		
+
 		watermark.addKeyListener(new KeyAdapter() {
-			
+
 			@Override
-			
+
 			public void keyPressed(KeyEvent e) {
-				
+
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
 					play(false);
 				}
-				
+
 			}
-			
+
 		});
-		
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, watermark, 11, SpringLayout.SOUTH, calidad);
 		sl_contentPane.putConstraint(SpringLayout.WEST, watermark, 20, SpringLayout.WEST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.EAST, watermark, -23, SpringLayout.WEST, videoOutput);
@@ -1932,7 +1937,13 @@ public class PlayerFrame extends JFrame {
 
 				if (e.getKeyCode() == KeyEvent.VK_ENTER) {
 
-					ponerDuracionFin();
+					String tiempoInicio = fin.getText();
+
+					fin.setText(tiempoInicio);
+
+					ponerDuracionFin(true);
+
+					fin.setText(tiempoInicio);
 
 				}
 
