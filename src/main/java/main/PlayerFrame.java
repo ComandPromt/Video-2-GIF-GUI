@@ -1659,51 +1659,37 @@ public class PlayerFrame extends JFrame {
 			colorWatermark.addItem(listaColores.get(x));
 		}
 
-//
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-//		colorWatermark.addItem("GRIS");
-
 		contentPane.add(colorWatermark);
 
 		tiempo = new JLabel("");
+		
 		sl_contentPane.putConstraint(SpringLayout.NORTH, btnNewButton_1_1, 6, SpringLayout.SOUTH, tiempo);
 		sl_contentPane.putConstraint(SpringLayout.WEST, btnNewButton_1_1, 0, SpringLayout.WEST, tiempo);
 		sl_contentPane.putConstraint(SpringLayout.NORTH, tiempo, 6, SpringLayout.SOUTH, positionSlider);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, tiempo, -217, SpringLayout.SOUTH, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.WEST, tiempo, 92, SpringLayout.EAST, lblDuracin_1_1_1_1);
+		
 		tiempo.setFont(new Font("Dialog", Font.PLAIN, 12));
+		
 		tiempo.setForeground(Color.WHITE);
+		
 		contentPane.add(tiempo);
 
 		duracion = new JLabel("");
+		
 		sl_contentPane.putConstraint(SpringLayout.NORTH, duracion, 37, SpringLayout.SOUTH, videoOutput);
 		sl_contentPane.putConstraint(SpringLayout.EAST, duracion, -43, SpringLayout.EAST, contentPane);
 		duracion.setForeground(Color.WHITE);
 		contentPane.add(duracion);
 
 		inicio = new JTextField();
+		
 		inicio.setText("00:00:0.0");
+		
 		inicio.addKeyListener(new KeyAdapter() {
+			
 			@Override
+			
 			public void keyPressed(KeyEvent e) {
 
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
@@ -1721,6 +1707,7 @@ public class PlayerFrame extends JFrame {
 			}
 
 			@Override
+			
 			public void keyReleased(KeyEvent e) {
 
 				if (inicio.getText().trim().isEmpty()) {
@@ -1732,6 +1719,7 @@ public class PlayerFrame extends JFrame {
 			}
 
 		});
+		
 		sl_contentPane.putConstraint(SpringLayout.WEST, inicio, 4, SpringLayout.EAST, btnNewButton_1_1);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, inicio, -181, SpringLayout.SOUTH, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.NORTH, inicio, 28, SpringLayout.SOUTH, positionSlider);
@@ -1739,15 +1727,20 @@ public class PlayerFrame extends JFrame {
 		inicio.setColumns(10);
 
 		JLabel lblNewLabel_1 = new JLabel("");
+		
 		lblNewLabel_1.addMouseListener(new MouseAdapter() {
+			
 			@Override
+			
 			public void mousePressed(MouseEvent e) {
 
 				fin.setText(duracion.getText());
 				ponerDuracionFin();
 
 			}
+			
 		});
+		
 		sl_contentPane.putConstraint(SpringLayout.EAST, inicio, -82, SpringLayout.WEST, lblNewLabel_1);
 		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_1, -6, SpringLayout.WEST, btnNewButton_1_1_1);
 		lblNewLabel_1.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/flag.png")));
@@ -1773,14 +1766,21 @@ public class PlayerFrame extends JFrame {
 		contentPane.add(lblNewLabel);
 
 		watermark = new JCheckBox("WaterMark");
+		
 		watermark.addKeyListener(new KeyAdapter() {
+			
 			@Override
+			
 			public void keyPressed(KeyEvent e) {
+				
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
 					play(false);
 				}
+				
 			}
+			
 		});
+		
 		sl_contentPane.putConstraint(SpringLayout.NORTH, watermark, 11, SpringLayout.SOUTH, calidad);
 		sl_contentPane.putConstraint(SpringLayout.WEST, watermark, 20, SpringLayout.WEST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.EAST, watermark, -23, SpringLayout.WEST, videoOutput);
