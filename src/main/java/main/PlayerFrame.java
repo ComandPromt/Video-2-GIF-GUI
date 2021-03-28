@@ -1627,7 +1627,7 @@ public class PlayerFrame extends JFrame {
 					}
 
 					catch (Exception e) {
-
+						e.printStackTrace();
 					}
 
 				}
@@ -1939,8 +1939,6 @@ public class PlayerFrame extends JFrame {
 
 					String tiempoInicio = fin.getText();
 
-					fin.setText(tiempoInicio);
-
 					ponerDuracionFin(true);
 
 					fin.setText(tiempoInicio);
@@ -2242,4 +2240,5 @@ public class PlayerFrame extends JFrame {
 		playbin.play();
 
 	}
+	
 }
