@@ -14,14 +14,18 @@ import java.awt.event.MouseEvent;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.util.LinkedList;
+import java.util.TooManyListenersException;
 import java.util.concurrent.TimeUnit;
 
 import javax.swing.AbstractAction;
@@ -61,6 +65,7 @@ import com.drew.metadata.Directory;
 import com.drew.metadata.Metadata;
 import com.sun.jna.Platform;
 
+import lib.DragAndDrop;
 import lib.SimpleVideoComponent;
 import net.bramp.ffmpeg.FFmpeg;
 
@@ -85,7 +90,9 @@ public class PlayerFrame extends JFrame {
 	private JComboBox<String> colorWatermark = new JComboBox<String>();
 
 	JCheckBox watermark;
+
 	JCheckBox prev;
+
 	JComboBox<String> calidad;
 
 	JCheckBox guardarMismaCarpeta;
@@ -133,18 +140,33 @@ public class PlayerFrame extends JFrame {
 	private JTextField inicio;
 
 	private JTextField textoWatermark;
+
 	private static JTextField fin;
+
 	private JTextField brillo_1;
+
 	private JTextField color_1;
+
 	private JTextField brillo_2;
+
 	private JTextField color_2;
 
+	private void pausar() {
+		reproducir = false;
+
+		play(false);
+	}
+
 	public static String saberSeparador(String os) {
+
 		if (os.equals("Linux")) {
 			return "/";
-		} else {
+		}
+
+		else {
 			return "\\";
 		}
+
 	}
 
 	private String saberCarpetaGif(int filtro) {
@@ -187,6 +209,16 @@ public class PlayerFrame extends JFrame {
 
 	}
 
+	public String eliminarEspacios(String cadena) {
+
+		cadena = cadena.trim();
+
+		cadena = cadena.replace(" ", "");
+
+		return cadena;
+
+	}
+
 	private void ponerDuracionGif() {
 
 		DecimalFormat df = new DecimalFormat("0.000");
@@ -222,7 +254,9 @@ public class PlayerFrame extends JFrame {
 
 			segundos = Double
 					.parseDouble(duracionVideo.substring(duracionVideo.lastIndexOf(":") + 1, duracionVideo.length()));
-		} catch (Exception e) {
+		}
+
+		catch (Exception e) {
 			horas = 0;
 			minutos = 0;
 			segundos = 0;
@@ -254,6 +288,7 @@ public class PlayerFrame extends JFrame {
 
 				playPauseButton.setIcon(new ImageIcon(getClass().getResource("/play-pause.png")));
 			}
+
 		}
 
 		catch (Exception e) {
@@ -261,15 +296,25 @@ public class PlayerFrame extends JFrame {
 
 	}
 
-	private void abrirVideo() throws ImageProcessingException, IOException {
+	private void abrirVideo() throws ImageProcessingException, IOException, URISyntaxException {
 
 		int returnValue = fileChooser.showOpenDialog(contentPane);
 
-		reproducir = true;
-
 		if (returnValue == JFileChooser.APPROVE_OPTION) {
 
-			video = fileChooser.getSelectedFile().toURI().toString();
+			reproducirVideo(fileChooser.getSelectedFile().toURI().toString());
+
+		}
+
+	}
+
+	private void reproducirVideo(String file)
+			throws FileNotFoundException, ImageProcessingException, IOException, URISyntaxException {
+
+		try {
+			reproducir = true;
+
+			video = file;
 
 			video = video.replace("%20", " ");
 
@@ -322,17 +367,21 @@ public class PlayerFrame extends JFrame {
 
 			rate.setText("" + frameRate);
 
-			playbin.setURI(fileChooser.getSelectedFile().toURI());
+			playbin.setURI(new URI(file));
+
+			verTiempos();
 
 			playbin.play();
 
+			play(true);
+
+			play(true);
+
 		}
 
-		verTiempos();
+		catch (Exception e) {
 
-		play(true);
-
-		play(true);
+		}
 
 	}
 
@@ -528,6 +577,7 @@ public class PlayerFrame extends JFrame {
 		}
 
 		String ceroHoras = "";
+
 		String ceroMinutos = "";
 
 		String ceroSegundos = "";
@@ -550,11 +600,11 @@ public class PlayerFrame extends JFrame {
 
 	private void verTiempos() {
 
-		duration = playbin.queryDuration(TimeUnit.NANOSECONDS);
+		try {
 
-		if (duration > 0 && video != null) {
+			duration = playbin.queryDuration(TimeUnit.NANOSECONDS);
 
-			try {
+			if (duration > 0 && video != null) {
 
 				InputStream inputstream = new FileInputStream(video);
 
@@ -585,21 +635,19 @@ public class PlayerFrame extends JFrame {
 
 			}
 
-			catch (Exception e) {
+			if (prev.isSelected())
+
+			{
+				prev.setSelected(false);
+
+				playbin.seek(0);
 
 			}
-
 		}
 
-		if (prev.isSelected())
-
-		{
-			prev.setSelected(false);
-
-			playbin.seek(0);
+		catch (Exception e) {
 
 		}
-
 	}
 
 	private long convertirANanoSegundos(String duracionVideo, boolean filtro) {
@@ -622,16 +670,23 @@ public class PlayerFrame extends JFrame {
 
 	static LinkedList<Object> ponerTiempos(boolean filtro) {
 
-		LinkedList<Object> cuenta;
+		LinkedList<Object> cuenta = new LinkedList<Object>();
 
-		cuenta = saberTiempo();
+		try {
 
-		tiempo.setText(calcularSegundosActual(cuenta.get(0), cuenta.get(1)));
+			cuenta = saberTiempo();
 
-		duracion.setText("" + calcularTiempo((long) cuenta.get(1)));
+			tiempo.setText(calcularSegundosActual(cuenta.get(0), cuenta.get(1)));
 
-		if (filtro) {
-			fin.setText("" + calcularTiempo((long) cuenta.get(1)));
+			duracion.setText("" + calcularTiempo((long) cuenta.get(1)));
+
+			if (filtro) {
+				fin.setText("" + calcularTiempo((long) cuenta.get(1)));
+			}
+		}
+
+		catch (Exception e) {
+			//
 		}
 
 		return cuenta;
@@ -745,13 +800,18 @@ public class PlayerFrame extends JFrame {
 
 				inicio.setText(positionVideo);
 
-			} catch (Exception e1) {
+			}
+
+			catch (Exception e1) {
 				e1.printStackTrace();
 			}
+
 		}
+
 	}
 
 	public PlayerFrame() {
+
 		setIconImage(
 				Toolkit.getDefaultToolkit().getImage(PlayerFrame.class.getResource("/imagenes/video_2_frame.png")));
 
@@ -992,16 +1052,25 @@ public class PlayerFrame extends JFrame {
 		contentPane.add(videoOutput);
 
 		JButton btnNewButton_1_1 = new JButton("<|");
+
 		btnNewButton_1_1.addKeyListener(new KeyAdapter() {
+
 			@Override
+
 			public void keyPressed(KeyEvent e) {
+
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+
 					play(false);
+
 				}
+
 			}
+
 		});
 
 		btnNewButton_1_1.addMouseListener(new MouseAdapter() {
+
 			@Override
 
 			public void mousePressed(MouseEvent e) {
@@ -1017,11 +1086,15 @@ public class PlayerFrame extends JFrame {
 			}
 
 		});
+
 		btnNewButton_1_1.setHorizontalAlignment(SwingConstants.LEFT);
+
 		btnNewButton_1_1.setFont(new Font("Dialog", Font.BOLD, 16));
+
 		contentPane.add(btnNewButton_1_1);
 
 		JButton btnNewButton_1_1_1 = new JButton("|>");
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, btnNewButton_1_1_1, 0, SpringLayout.NORTH, btnNewButton_1_1);
 
 		btnNewButton_1_1_1.addKeyListener(new KeyAdapter() {
@@ -1045,112 +1118,187 @@ public class PlayerFrame extends JFrame {
 			public void mousePressed(MouseEvent e) {
 
 				ponerDuracionFin(false);
+
 				ponerDuracionGif();
+
 			}
 
 		});
+
 		btnNewButton_1_1_1.setHorizontalAlignment(SwingConstants.LEFT);
+
 		btnNewButton_1_1_1.setFont(new Font("Dialog", Font.BOLD, 16));
+
 		contentPane.add(btnNewButton_1_1_1);
 
 		JLabel lblDuracin = new JLabel("Duración GIF");
 
 		sl_contentPane.putConstraint(SpringLayout.WEST, lblDuracin, 10, SpringLayout.WEST, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, lblDuracin, -5, SpringLayout.WEST, videoOutput);
+
 		lblDuracin.setHorizontalAlignment(SwingConstants.CENTER);
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, lblDuracin, 10, SpringLayout.NORTH, contentPane);
+
 		lblDuracin.setFont(new Font("Dialog", Font.PLAIN, 18));
+
 		lblDuracin.setForeground(Color.WHITE);
+
 		contentPane.add(lblDuracin);
 
 		anchoVideoTxt = new JTextField();
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, anchoVideoTxt, 37, SpringLayout.WEST, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, anchoVideoTxt, -26, SpringLayout.WEST, videoOutput);
+
 		anchoVideoTxt.addKeyListener(new KeyAdapter() {
+
 			@Override
+
 			public void keyReleased(KeyEvent e) {
 
 				try {
+
 					if (Integer.parseInt(anchoVideoTxt.getText()) <= 0) {
 						anchoVideoTxt.setText("" + anchoVideo);
 					}
-				} catch (Exception e1) {
+
+				}
+
+				catch (Exception e1) {
 					anchoVideoTxt.setText("" + anchoVideo);
 				}
+
 			}
+
 		});
 
 		largoVideoTxt = new JTextField();
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, largoVideoTxt, 37, SpringLayout.WEST, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, largoVideoTxt, -26, SpringLayout.WEST, videoOutput);
+
 		largoVideoTxt.addKeyListener(new KeyAdapter() {
+
 			@Override
+
 			public void keyReleased(KeyEvent e) {
+
 				try {
+
 					if (Integer.parseInt(largoVideoTxt.getText()) <= 0) {
 						largoVideoTxt.setText("" + largoVideo);
 					}
-				} catch (Exception e1) {
+
+				}
+
+				catch (Exception e1) {
 					largoVideoTxt.setText("" + largoVideo);
 				}
+
 			}
+
 		});
 
 		duracionVideo = new JTextField();
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, duracionVideo, 37, SpringLayout.WEST, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, duracionVideo, -26, SpringLayout.WEST, videoOutput);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, duracionVideo, 31, SpringLayout.SOUTH, lblDuracin);
 
 		duracionVideo.setHorizontalAlignment(SwingConstants.CENTER);
+
 		duracionVideo.setEditable(false);
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, duracionVideo, 6, SpringLayout.SOUTH, lblDuracin);
+
 		contentPane.add(duracionVideo);
+
 		duracionVideo.setColumns(10);
 
 		JLabel lblDuracin_1 = new JLabel("");
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, lblDuracin_1, 7, SpringLayout.SOUTH, duracionVideo);
+
 		lblDuracin_1.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/width.png")));
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, lblDuracin_1, 10, SpringLayout.WEST, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, lblDuracin_1, -5, SpringLayout.WEST, videoOutput);
+
 		lblDuracin_1.setHorizontalAlignment(SwingConstants.CENTER);
+
 		lblDuracin_1.setForeground(Color.WHITE);
+
 		lblDuracin_1.setFont(new Font("Dialog", Font.BOLD, 16));
+
 		contentPane.add(lblDuracin_1);
 
 		sl_contentPane.putConstraint(SpringLayout.NORTH, anchoVideoTxt, 6, SpringLayout.SOUTH, lblDuracin_1);
+
 		anchoVideoTxt.setHorizontalAlignment(SwingConstants.CENTER);
+
 		anchoVideoTxt.setColumns(10);
+
 		contentPane.add(anchoVideoTxt);
 
 		JLabel lblDuracin_1_1 = new JLabel("");
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, lblDuracin_1_1, 155, SpringLayout.NORTH, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, anchoVideoTxt, -6, SpringLayout.NORTH, lblDuracin_1_1);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, largoVideoTxt, 31, SpringLayout.SOUTH, lblDuracin_1_1);
+
 		lblDuracin_1_1.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/height.png")));
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, lblDuracin_1_1, 10, SpringLayout.WEST, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, lblDuracin_1_1, -5, SpringLayout.WEST, videoOutput);
+
 		lblDuracin_1_1.setHorizontalAlignment(SwingConstants.CENTER);
+
 		lblDuracin_1_1.setForeground(Color.WHITE);
+
 		lblDuracin_1_1.setFont(new Font("Dialog", Font.BOLD, 16));
+
 		contentPane.add(lblDuracin_1_1);
 
 		largoVideoTxt.setHorizontalAlignment(SwingConstants.CENTER);
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, largoVideoTxt, 6, SpringLayout.SOUTH, lblDuracin_1_1);
+
 		largoVideoTxt.setColumns(10);
+
 		contentPane.add(largoVideoTxt);
 
 		JLabel lblDuracin_1_1_1 = new JLabel("Rate (FPS)");
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, lblDuracin_1_1_1, 12, SpringLayout.SOUTH, largoVideoTxt);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, lblDuracin_1_1_1, 0, SpringLayout.WEST, lblDuracin);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, lblDuracin_1_1_1, -5, SpringLayout.WEST, videoOutput);
+
 		lblDuracin_1_1_1.setHorizontalAlignment(SwingConstants.CENTER);
+
 		lblDuracin_1_1_1.setForeground(Color.WHITE);
+
 		lblDuracin_1_1_1.setFont(new Font("Dialog", Font.PLAIN, 18));
+
 		contentPane.add(lblDuracin_1_1_1);
 
 		rate = new JTextField();
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblDuracin_1_1_1, -6, SpringLayout.NORTH, rate);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, rate, 37, SpringLayout.WEST, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, rate, 0, SpringLayout.EAST, duracionVideo);
 
 		rate.addKeyListener(new KeyAdapter() {
@@ -1176,34 +1324,59 @@ public class PlayerFrame extends JFrame {
 		});
 
 		rate.setText("10");
+
 		rate.setHorizontalAlignment(SwingConstants.CENTER);
+
 		rate.setColumns(10);
+
 		contentPane.add(rate);
 
 		JLabel lblDuracin_1_1_1_1 = new JLabel("Calidad");
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, lblDuracin_1_1_1_1, 342, SpringLayout.NORTH, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, lblDuracin_1_1_1_1, 37, SpringLayout.WEST, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, lblDuracin_1_1_1_1, -33, SpringLayout.WEST, videoOutput);
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, rate, -46, SpringLayout.NORTH, lblDuracin_1_1_1_1);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, rate, -18, SpringLayout.NORTH, lblDuracin_1_1_1_1);
+
 		lblDuracin_1_1_1_1.setHorizontalAlignment(SwingConstants.CENTER);
+
 		lblDuracin_1_1_1_1.setForeground(Color.WHITE);
+
 		lblDuracin_1_1_1_1.setFont(new Font("Dialog", Font.PLAIN, 18));
+
 		contentPane.add(lblDuracin_1_1_1_1);
 
 		calidad = new JComboBox<String>();
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblDuracin_1_1_1_1, -6, SpringLayout.NORTH, calidad);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, calidad, 37, SpringLayout.WEST, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, calidad, 0, SpringLayout.EAST, duracionVideo);
+
 		calidad.setFont(new Font("Dialog", Font.PLAIN, 16));
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, calidad, 377, SpringLayout.NORTH, contentPane);
+
 		calidad.addKeyListener(new KeyAdapter() {
+
 			@Override
+
 			public void keyPressed(KeyEvent e) {
+
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+
 					play(false);
+
 				}
+
 			}
+
 		});
 
 		contentPane.add(calidad);
@@ -1213,20 +1386,35 @@ public class PlayerFrame extends JFrame {
 		calidad.addItem("Alta");
 
 		prev = new JCheckBox("Prev");
+
 		prev.setForeground(Color.WHITE);
+
 		prev.setBackground(Color.DARK_GRAY);
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, prev, 86, SpringLayout.SOUTH, btnNewButton_1_1_1);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, prev, 510, SpringLayout.WEST, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, prev, -28, SpringLayout.SOUTH, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, prev, -107, SpringLayout.EAST, contentPane);
+
 		prev.setIcon(null);
+
 		prev.addKeyListener(new KeyAdapter() {
+
 			@Override
+
 			public void keyPressed(KeyEvent e) {
+
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+
 					play(false);
+
 				}
+
 			}
+
 		});
 
 		prev.addMouseListener(new MouseAdapter() {
@@ -1268,12 +1456,15 @@ public class PlayerFrame extends JFrame {
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
 					play(false);
 				}
+
 			}
 
 		});
 
 		sl_contentPane.putConstraint(SpringLayout.NORTH, btnConvertir, 0, SpringLayout.NORTH, prev);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, btnConvertir, 14, SpringLayout.EAST, prev);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, btnConvertir, 0, SpringLayout.SOUTH, prev);
 
 		btnConvertir.addActionListener(new ActionListener() {
@@ -1292,15 +1483,15 @@ public class PlayerFrame extends JFrame {
 
 						comando.add("-ss");
 
-						comando.add("" + inicio.getText());
+						comando.add("" + eliminarEspacios(inicio.getText()));
 
 						comando.add("-t");
 
-						comando.add(fin.getText());
+						comando.add(eliminarEspacios(fin.getText()));
 
 						comando.add("-r");
 
-						comando.add(rate.getText());
+						comando.add(eliminarEspacios(rate.getText()));
 
 						comando.add("-i");
 
@@ -1637,10 +1828,15 @@ public class PlayerFrame extends JFrame {
 		});
 
 		btnConvertir.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/video_2_frame.png")));
+
 		btnConvertir.setFont(new Font("Dialog", Font.BOLD, 14));
+
 		contentPane.add(btnConvertir);
+
 		colorWatermark.setFont(new Font("Dialog", Font.PLAIN, 14));
+
 		colorWatermark.setEnabled(false);
+
 		colorWatermark.addKeyListener(new KeyAdapter() {
 
 			@Override
@@ -1668,9 +1864,13 @@ public class PlayerFrame extends JFrame {
 		tiempo = new JLabel("");
 
 		sl_contentPane.putConstraint(SpringLayout.NORTH, btnNewButton_1_1, 6, SpringLayout.SOUTH, tiempo);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, btnNewButton_1_1, 0, SpringLayout.WEST, tiempo);
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, tiempo, 6, SpringLayout.SOUTH, positionSlider);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, tiempo, -217, SpringLayout.SOUTH, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, tiempo, 92, SpringLayout.EAST, lblDuracin_1_1_1_1);
 
 		tiempo.setFont(new Font("Dialog", Font.PLAIN, 12));
@@ -1682,8 +1882,11 @@ public class PlayerFrame extends JFrame {
 		duracion = new JLabel("");
 
 		sl_contentPane.putConstraint(SpringLayout.NORTH, duracion, 37, SpringLayout.SOUTH, videoOutput);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, duracion, -43, SpringLayout.EAST, contentPane);
+
 		duracion.setForeground(Color.WHITE);
+
 		contentPane.add(duracion);
 
 		inicio = new JTextField();
@@ -1701,11 +1904,15 @@ public class PlayerFrame extends JFrame {
 				}
 
 				if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+
 					String tiempoInicio = inicio.getText();
 
 					inicio.setText(tiempoInicio);
+
 					ponerDuracionInicio(true);
+
 					inicio.setText(tiempoInicio);
+
 				}
 
 			}
@@ -1725,9 +1932,13 @@ public class PlayerFrame extends JFrame {
 		});
 
 		sl_contentPane.putConstraint(SpringLayout.WEST, inicio, 4, SpringLayout.EAST, btnNewButton_1_1);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, inicio, -181, SpringLayout.SOUTH, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, inicio, 28, SpringLayout.SOUTH, positionSlider);
+
 		contentPane.add(inicio);
+
 		inicio.setColumns(10);
 
 		JLabel lblNewLabel_1 = new JLabel("");
@@ -1747,16 +1958,25 @@ public class PlayerFrame extends JFrame {
 		});
 
 		sl_contentPane.putConstraint(SpringLayout.EAST, inicio, -82, SpringLayout.WEST, lblNewLabel_1);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_1, -6, SpringLayout.WEST, btnNewButton_1_1_1);
+
 		lblNewLabel_1.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/flag.png")));
+
 		lblNewLabel_1.setHorizontalAlignment(SwingConstants.CENTER);
+
 		lblNewLabel_1.setForeground(Color.WHITE);
+
 		lblNewLabel_1.setFont(new Font("Dialog", Font.BOLD, 16));
+
 		contentPane.add(lblNewLabel_1);
 
 		JLabel lblNewLabel = new JLabel("");
+
 		lblNewLabel.addMouseListener(new MouseAdapter() {
+
 			@Override
+
 			public void mousePressed(MouseEvent e) {
 
 				inicializar();
@@ -1764,10 +1984,15 @@ public class PlayerFrame extends JFrame {
 			}
 
 		});
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, size, 26, SpringLayout.SOUTH, lblNewLabel);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_1, 0, SpringLayout.SOUTH, lblNewLabel);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel, 0, SpringLayout.WEST, videoOutput);
+
 		lblNewLabel.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/start.png")));
+
 		contentPane.add(lblNewLabel);
 
 		watermark = new JCheckBox("WaterMark");
@@ -1787,7 +2012,9 @@ public class PlayerFrame extends JFrame {
 		});
 
 		sl_contentPane.putConstraint(SpringLayout.NORTH, watermark, 11, SpringLayout.SOUTH, calidad);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, watermark, 20, SpringLayout.WEST, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, watermark, -23, SpringLayout.WEST, videoOutput);
 
 		watermark.addItemListener(new ItemListener() {
@@ -1818,20 +2045,33 @@ public class PlayerFrame extends JFrame {
 				}
 
 			}
+
 		});
+
 		watermark.setBackground(Color.DARK_GRAY);
+
 		watermark.setHorizontalAlignment(SwingConstants.CENTER);
+
 		watermark.setForeground(Color.WHITE);
+
 		watermark.setFont(new Font("Dialog", Font.PLAIN, 18));
+
 		contentPane.add(watermark);
 
 		textoWatermark = new JTextField();
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, textoWatermark, 13, SpringLayout.SOUTH, watermark);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, textoWatermark, 37, SpringLayout.WEST, contentPane);
+
 		textoWatermark.setEnabled(false);
+
 		textoWatermark.setToolTipText("Inserta el texto para la marca de agua");
+
 		textoWatermark.setHorizontalAlignment(SwingConstants.CENTER);
+
 		textoWatermark.setColumns(10);
+
 		contentPane.add(textoWatermark);
 
 		JLabel label = new JLabel("");
@@ -1841,19 +2081,23 @@ public class PlayerFrame extends JFrame {
 			@Override
 
 			public void mousePressed(MouseEvent e) {
-				reproducir = false;
 
-				play(false);
+				pausar();
+
 			}
 
 		});
 
 		sl_contentPane.putConstraint(SpringLayout.NORTH, label, 0, SpringLayout.NORTH, openFileButton);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, label, -6, SpringLayout.WEST, positionSlider);
+
 		label.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/play-pause.png")));
 
 		contentPane.add(label);
+
 		size.setEnabled(false);
+
 		size.setFont(new Font("Dialog", Font.PLAIN, 16));
 
 		size.addKeyListener(new KeyAdapter() {
@@ -1868,67 +2112,108 @@ public class PlayerFrame extends JFrame {
 						size.setText("24");
 					}
 
-				} catch (Exception e1) {
+				}
+
+				catch (Exception e1) {
 					size.setText("24");
 				}
 
 			}
 
 			@Override
+
 			public void keyPressed(KeyEvent e) {
+
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
 					play(false);
 				}
+
 			}
+
 		});
 
 		size.setText("24");
+
 		size.setHorizontalAlignment(SwingConstants.CENTER);
+
 		contentPane.add(size);
+
 		posicionWatermark.addKeyListener(new KeyAdapter() {
+
 			@Override
+
 			public void keyPressed(KeyEvent e) {
+
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
 					play(false);
 				}
+
 			}
+
 		});
+
 		posicionWatermark.setEnabled(false);
 
 		posicionWatermark.setFont(new Font("Dialog", Font.PLAIN, 16));
+
 		contentPane.add(posicionWatermark);
 
 		posicionWatermark.addItem("ARRIBA - IZQUIERDA");
+
 		posicionWatermark.addItem("ARRIBA - CENTRO");
+
 		posicionWatermark.addItem("ARRIBA - DERECHA");
+
 		posicionWatermark.addItem("MEDIO - IZQUIERDA");
+
 		posicionWatermark.addItem("MEDIO - CENTRO");
+
 		posicionWatermark.addItem("MEDIO - DERECHA");
+
 		posicionWatermark.addItem("ABAJO - IZQUIERDA");
+
 		posicionWatermark.addItem("ABAJO - CENTRO");
+
 		posicionWatermark.addItem("ABAJO - DERECHA");
 
 		JLabel lblNewLabel_2 = new JLabel("");
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, textoWatermark, -28, SpringLayout.NORTH, lblNewLabel_2);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, colorWatermark, 6, SpringLayout.EAST, lblNewLabel_2);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel_2, 0, SpringLayout.WEST, duracionVideo);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_2, 0, SpringLayout.SOUTH, colorWatermark);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_2, -595, SpringLayout.EAST, contentPane);
+
 		lblNewLabel_2.setHorizontalAlignment(SwingConstants.RIGHT);
+
 		lblNewLabel_2.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/color.png")));
+
 		contentPane.add(lblNewLabel_2);
 
 		JLabel lblNewLabel_3 = new JLabel("");
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_3, -21, SpringLayout.NORTH, colorWatermark);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, size, 13, SpringLayout.EAST, lblNewLabel_3);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel_3, 157, SpringLayout.WEST, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel, -10, SpringLayout.NORTH, lblNewLabel_3);
+
 		lblNewLabel_3.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/size_Text.png")));
+
 		contentPane.add(lblNewLabel_3);
 
 		fin = new JTextField();
+
 		fin.addKeyListener(new KeyAdapter() {
+
 			@Override
+
 			public void keyPressed(KeyEvent e) {
 
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
@@ -1948,6 +2233,7 @@ public class PlayerFrame extends JFrame {
 			}
 
 			@Override
+
 			public void keyReleased(KeyEvent e) {
 
 				if (fin.getText().trim().isEmpty()) {
@@ -1961,16 +2247,25 @@ public class PlayerFrame extends JFrame {
 		});
 
 		sl_contentPane.putConstraint(SpringLayout.EAST, btnConvertir, 0, SpringLayout.EAST, fin);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, btnNewButton_1_1_1, -6, SpringLayout.WEST, fin);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, fin, 0, SpringLayout.SOUTH, btnNewButton_1_1);
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, fin, 0, SpringLayout.NORTH, btnNewButton_1_1);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, fin, 569, SpringLayout.WEST, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, fin, -25, SpringLayout.EAST, contentPane);
+
 		fin.setColumns(10);
+
 		contentPane.add(fin);
 
 		blur = new JCheckBox("Desenfoque");
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, blur, 18, SpringLayout.SOUTH, inicio);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, blur, 0, SpringLayout.EAST, lblNewLabel_1);
 
 		blur.addItemListener(new ItemListener() {
@@ -1978,39 +2273,61 @@ public class PlayerFrame extends JFrame {
 			public void itemStateChanged(ItemEvent arg0) {
 
 				if (blur.isSelected()) {
+
 					brillo_1.setEnabled(true);
+
 					brillo_2.setEnabled(true);
+
 					color_1.setEnabled(true);
+
 					color_2.setEnabled(true);
+
 				}
 
 				else {
 
 					brillo_1.setEnabled(false);
+
 					brillo_2.setEnabled(false);
+
 					color_1.setEnabled(false);
+
 					color_2.setEnabled(false);
+
 				}
 
 			}
 
 		});
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, blur, 6, SpringLayout.EAST, size);
+
 		blur.addKeyListener(new KeyAdapter() {
+
 			@Override
+
 			public void keyPressed(KeyEvent e) {
+
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
 					play(false);
 				}
+
 			}
+
 		});
+
 		blur.setHorizontalAlignment(SwingConstants.CENTER);
+
 		blur.setForeground(Color.WHITE);
+
 		blur.setFont(new Font("Dialog", Font.PLAIN, 17));
+
 		blur.setBackground(Color.DARK_GRAY);
+
 		contentPane.add(blur);
 
 		brillo_1 = new JTextField();
+
 		brillo_1.setEnabled(false);
 
 		brillo_1.addKeyListener(new KeyAdapter() {
@@ -2034,167 +2351,281 @@ public class PlayerFrame extends JFrame {
 			}
 
 			@Override
+
 			public void keyPressed(KeyEvent e) {
+
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
 					play(false);
 				}
+
 			}
+
 		});
 
 		brillo_1.setText("5");
+
 		brillo_1.setHorizontalAlignment(SwingConstants.CENTER);
+
 		brillo_1.setFont(new Font("Dialog", Font.PLAIN, 16));
+
 		contentPane.add(brillo_1);
+
 		brillo_1.setColumns(10);
 
 		JLabel lblNewLabel_4 = new JLabel("");
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, colorWatermark, -6, SpringLayout.WEST, lblNewLabel_4);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, posicionWatermark, -6, SpringLayout.WEST, lblNewLabel_4);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel_4, 272, SpringLayout.WEST, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_4, 0, SpringLayout.SOUTH, posicionWatermark);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_4, -365, SpringLayout.EAST, contentPane);
+
 		lblNewLabel_4.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/pintura.png")));
+
 		contentPane.add(lblNewLabel_4);
 
 		color_1 = new JTextField();
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, brillo_1, -11, SpringLayout.NORTH, color_1);
+
 		color_1.setEnabled(false);
+
 		color_1.addKeyListener(new KeyAdapter() {
+
 			@Override
+
 			public void keyReleased(KeyEvent e) {
+
 				try {
 
 					if (Integer.parseInt(color_1.getText()) <= 0) {
+
 						color_1.setText("5");
+
 					}
 
-				} catch (Exception e1) {
+				}
+
+				catch (Exception e1) {
+
 					color_1.setText("5");
+
 				}
 
 			}
 
 			@Override
+
 			public void keyPressed(KeyEvent e) {
+
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+
 					play(false);
+
 				}
+
 			}
+
 		});
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, color_1, -5, SpringLayout.NORTH, posicionWatermark);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, color_1, 16, SpringLayout.EAST, lblNewLabel_4);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, color_1, 10, SpringLayout.SOUTH, prev);
+
 		color_1.setText("5");
+
 		color_1.setHorizontalAlignment(SwingConstants.CENTER);
+
 		color_1.setFont(new Font("Dialog", Font.PLAIN, 16));
+
 		color_1.setColumns(10);
+
 		contentPane.add(color_1);
 
 		JLabel lblNewLabel_6 = new JLabel("");
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel_6, 272, SpringLayout.WEST, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, size, -6, SpringLayout.WEST, lblNewLabel_6);
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, lblNewLabel_6, 56, SpringLayout.SOUTH, inicio);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_6, -8, SpringLayout.NORTH, lblNewLabel_4);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, brillo_1, 11, SpringLayout.EAST, lblNewLabel_6);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_6, -360, SpringLayout.EAST, contentPane);
+
 		lblNewLabel_6.setIcon(new ImageIcon(PlayerFrame.class.getResource("/imagenes/brillo.png")));
+
 		contentPane.add(lblNewLabel_6);
 
 		brillo_2 = new JTextField();
+
 		brillo_2.setEnabled(false);
+
 		brillo_2.addKeyListener(new KeyAdapter() {
+
 			@Override
+
 			public void keyReleased(KeyEvent e) {
+
 				try {
 
 					if (Integer.parseInt(brillo_2.getText()) <= 0) {
+
 						brillo_2.setText("3");
+
 					}
 
-				} catch (Exception e1) {
+				}
+
+				catch (Exception e1) {
 					brillo_2.setText("3");
 				}
 
 			}
 
 			@Override
+
 			public void keyPressed(KeyEvent e) {
+
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
 					play(false);
 				}
+
 			}
+
 		});
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, brillo_1, -30, SpringLayout.WEST, brillo_2);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, brillo_2, 434, SpringLayout.WEST, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, brillo_2, -18, SpringLayout.WEST, prev);
+
 		brillo_2.setText("3");
+
 		brillo_2.setHorizontalAlignment(SwingConstants.CENTER);
+
 		brillo_2.setFont(new Font("Dialog", Font.PLAIN, 16));
+
 		brillo_2.setColumns(10);
+
 		contentPane.add(brillo_2);
 
 		JLabel lblNewLabel_7 = new JLabel("Power");
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, brillo_1, 8, SpringLayout.SOUTH, lblNewLabel_7);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, blur, -7, SpringLayout.NORTH, lblNewLabel_7);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel_7, 11, SpringLayout.EAST, lblNewLabel_6);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_7, 0, SpringLayout.EAST, brillo_1);
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, lblNewLabel_7, 21, SpringLayout.NORTH, size);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_7, 0, SpringLayout.SOUTH, size);
+
 		lblNewLabel_7.setHorizontalAlignment(SwingConstants.CENTER);
+
 		lblNewLabel_7.setFont(new Font("Dialog", Font.PLAIN, 16));
+
 		lblNewLabel_7.setForeground(Color.WHITE);
+
 		contentPane.add(lblNewLabel_7);
 
 		JLabel lblNewLabel_5_1_1 = new JLabel("Radio");
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, brillo_2, 9, SpringLayout.SOUTH, lblNewLabel_5_1_1);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_5_1_1, -15, SpringLayout.EAST, lblNewLabel_1);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel_5_1_1, 0, SpringLayout.WEST, brillo_2);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_5_1_1, 0, SpringLayout.SOUTH, size);
+
 		lblNewLabel_5_1_1.setHorizontalAlignment(SwingConstants.CENTER);
+
 		lblNewLabel_5_1_1.setForeground(Color.WHITE);
+
 		lblNewLabel_5_1_1.setFont(new Font("Dialog", Font.PLAIN, 16));
+
 		contentPane.add(lblNewLabel_5_1_1);
 
 		color_2 = new JTextField();
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, brillo_2, -11, SpringLayout.NORTH, color_2);
+
 		color_2.setEnabled(false);
+
 		color_2.addKeyListener(new KeyAdapter() {
+
 			@Override
+
 			public void keyReleased(KeyEvent e) {
+
 				try {
 
 					if (Integer.parseInt(color_2.getText()) <= 0) {
 						color_2.setText("3");
 					}
 
-				} catch (Exception e1) {
+				}
+
+				catch (Exception e1) {
 					color_2.setText("3");
 				}
 
 			}
 
 			@Override
+
 			public void keyPressed(KeyEvent e) {
+
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
 					play(false);
 				}
+
 			}
+
 		});
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, color_1, -30, SpringLayout.WEST, color_2);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, color_2, -18, SpringLayout.WEST, prev);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, color_2, 434, SpringLayout.WEST, contentPane);
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, color_2, -5, SpringLayout.NORTH, posicionWatermark);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, color_2, 10, SpringLayout.SOUTH, prev);
+
 		color_2.setText("3");
+
 		color_2.setHorizontalAlignment(SwingConstants.CENTER);
+
 		color_2.setFont(new Font("Dialog", Font.PLAIN, 16));
+
 		color_2.setColumns(10);
+
 		contentPane.add(color_2);
 
 		guardarMismaCarpeta = new JCheckBox("Guardar en la");
+
 		guardarMismaCarpeta.setHorizontalAlignment(SwingConstants.CENTER);
+
 		guardarMismaCarpeta.addKeyListener(new KeyAdapter() {
+
 			@Override
+
 			public void keyPressed(KeyEvent e) {
 
 				if (e.getKeyCode() == KeyEvent.VK_SPACE) {
@@ -2202,30 +2633,75 @@ public class PlayerFrame extends JFrame {
 				}
 
 			}
+
 		});
+
 		guardarMismaCarpeta.setForeground(Color.WHITE);
+
 		guardarMismaCarpeta.setBackground(Color.DARK_GRAY);
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, guardarMismaCarpeta, 19, SpringLayout.SOUTH,
 				btnNewButton_1_1_1);
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, guardarMismaCarpeta, 0, SpringLayout.WEST, btnNewButton_1_1_1);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, guardarMismaCarpeta, -19, SpringLayout.SOUTH, lblNewLabel_3);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, guardarMismaCarpeta, -25, SpringLayout.EAST, contentPane);
+
 		guardarMismaCarpeta.setFont(new Font("Dialog", Font.PLAIN, 16));
+
 		contentPane.add(guardarMismaCarpeta);
 
 		JLabel lblNewLabel_5 = new JLabel("misma carpeta");
+
 		sl_contentPane.putConstraint(SpringLayout.WEST, lblNewLabel_5, 21, SpringLayout.EAST, lblNewLabel_5_1_1);
+
 		sl_contentPane.putConstraint(SpringLayout.EAST, lblNewLabel_5, -25, SpringLayout.EAST, contentPane);
+
 		lblNewLabel_5.setHorizontalAlignment(SwingConstants.CENTER);
+
 		lblNewLabel_5.setForeground(Color.WHITE);
+
 		lblNewLabel_5.setFont(new Font("Dialog", Font.PLAIN, 16));
+
 		sl_contentPane.putConstraint(SpringLayout.NORTH, lblNewLabel_5, 0, SpringLayout.NORTH, lblNewLabel_6);
+
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblNewLabel_5, -14, SpringLayout.NORTH, prev);
+
 		contentPane.add(lblNewLabel_5);
 
 		playbin = new PlayBin("GstDumbPlayer");
 
 		playbin.setVideoSink(videoOutput.getElement());
+
+		javax.swing.border.TitledBorder dragBorder = new javax.swing.border.TitledBorder("Drop 'em");
+
+		try {
+
+			new DragAndDrop(videoOutput, dragBorder, rootPaneCheckingEnabled, new DragAndDrop.Listener() {
+
+				public void filesDropped(java.io.File[] files) {
+
+					try {
+
+						reproducirVideo("file:" + files[0].toString());
+
+					}
+
+					catch (Exception e) {
+						e.printStackTrace();
+					}
+
+				}
+
+			});
+
+		}
+
+		catch (TooManyListenersException e1) {
+			//
+		}
 
 	}
 
@@ -2240,5 +2716,5 @@ public class PlayerFrame extends JFrame {
 		playbin.play();
 
 	}
-	
+
 }
